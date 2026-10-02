@@ -178,3 +178,203 @@ url("https://upload.wikimedia.org/wikipedia/commons/c/c1/Lake_Como_-_Villa_del_B
   .schedule-form{grid-template-columns:1fr}
   .schedule-form label:last-child{grid-column:auto}
 }
+
+
+/* NEO v2 Hybrid — clean Life RPG visual layer */
+:root{
+  --neo-bg:#f3efe9;
+  --neo-surface:#fbf8f3;
+  --neo-surface-2:#fffdfa;
+  --neo-ink:#171411;
+  --neo-muted:#756e68;
+  --neo-line:rgba(23,20,17,.085);
+  --neo-dark:#1d1815;
+  --neo-wine:#8e4d61;
+  --neo-wine2:#b98999;
+  --neo-gold:#b49767;
+  --neo-shadow:0 18px 50px rgba(23,20,17,.06);
+}
+
+body{
+  background:
+    radial-gradient(circle at 0 0,rgba(180,151,103,.10),transparent 25%),
+    radial-gradient(circle at 100% 0,rgba(142,77,97,.07),transparent 24%),
+    var(--neo-bg) !important;
+  color:var(--neo-ink);
+}
+
+.sidebar{
+  background:rgba(251,248,243,.80)!important;
+  backdrop-filter:blur(18px);
+  border-right:1px solid var(--neo-line)!important;
+}
+
+.sidebar .brand,.logo{
+  font-weight:800!important;
+  letter-spacing:-.035em!important;
+}
+
+.card,.panel,.widget,.surface{
+  background:rgba(255,255,255,.72)!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:19px!important;
+  box-shadow:var(--neo-shadow)!important;
+  backdrop-filter:blur(10px);
+}
+
+.btn{
+  border-radius:11px!important;
+  font-weight:800!important;
+}
+.btn.primary{
+  background:var(--neo-dark)!important;
+  border-color:var(--neo-dark)!important;
+  color:white!important;
+}
+
+.gaming-summary{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 16px;
+}
+.metric-tile{
+  background:rgba(255,255,255,.72);
+  border:1px solid var(--neo-line);
+  border-radius:16px;
+  padding:13px;
+  box-shadow:var(--neo-shadow);
+}
+.metric-tile span{
+  display:block;
+  font-size:9px;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:var(--neo-muted);
+  font-weight:800;
+}
+.metric-tile strong{
+  display:block;
+  margin-top:5px;
+  font-size:22px;
+  letter-spacing:-.035em;
+}
+.metric-tile small{
+  display:block;
+  margin-top:3px;
+  color:var(--neo-muted);
+  font-size:9px;
+}
+.metric-tile.money strong{color:var(--neo-wine)}
+.metric-tile.capacity strong{font-size:16px}
+
+.gaming-wealth-card{
+  margin-top:14px;
+  background:var(--neo-dark);
+  color:#fff;
+  border-radius:19px;
+  padding:16px;
+  box-shadow:var(--neo-shadow);
+}
+.gaming-wealth-card .kicker{
+  color:#cfc4bc;
+  font-size:9px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-weight:800;
+}
+.gaming-wealth-main{
+  font-size:31px;
+  font-weight:800;
+  letter-spacing:-.04em;
+  margin:7px 0 2px;
+}
+.gaming-wealth-sub{
+  font-size:10px;
+  color:#cfc4bc;
+}
+.gaming-moneybar{
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  overflow:hidden;
+  margin-top:13px;
+}
+.gaming-moneybar span{
+  display:block;
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,var(--neo-gold),#e0c9a7,var(--neo-wine2));
+  transition:.35s ease;
+}
+.gaming-wealth-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:13px;
+}
+.gaming-wealth-grid>div{
+  border-top:1px solid rgba(255,255,255,.10);
+  padding-top:9px;
+}
+.gaming-wealth-grid span{
+  display:block;
+  font-size:9px;
+  color:#cfc4bc;
+}
+.gaming-wealth-grid b{
+  display:block;
+  margin-top:3px;
+  font-size:12px;
+}
+
+.neo-level-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(23,20,17,.58);
+  display:grid;
+  place-items:center;
+  z-index:9999;
+}
+.neo-level-modal.hidden{display:none}
+.neo-level-card{
+  width:min(420px,90vw);
+  background:var(--neo-surface);
+  border-radius:22px;
+  padding:26px;
+  text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,.22);
+}
+.neo-level-number{
+  font-size:48px;
+  line-height:1;
+  font-weight:800;
+  color:var(--neo-wine);
+  letter-spacing:-.05em;
+  margin-top:6px;
+}
+.neo-level-card h2{margin:8px 0 0}
+.neo-level-card p{color:var(--neo-muted);font-size:11px}
+
+/* player-card feel for existing level/xp areas */
+[class*="level"],[class*="xp"]{transition:.2s ease}
+progress,.xpbar,.progress{
+  accent-color:var(--neo-wine);
+}
+
+/* tone down oversized cinematic hero while preserving function */
+.hero,.day-hero,.capacity-hero{
+  min-height:auto!important;
+}
+.hero img,.day-hero img,.capacity-hero img{
+  max-height:260px!important;
+  object-fit:cover!important;
+}
+
+@media(max-width:1100px){
+  .gaming-summary{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:650px){
+  .gaming-summary{grid-template-columns:1fr 1fr}
+  .gaming-wealth-grid{grid-template-columns:1fr 1fr}
+}
