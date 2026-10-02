@@ -328,7 +328,10 @@
           <h2 id="projectWorkspaceTitle">Projekt</h2>
           <p id="projectWorkspaceMeta" class="helper"></p>
         </div>
-        <button id="projectWorkspaceClose" class="btn ghost">Zamknij</button>
+        <div class="project-workspace-actions">
+          <button id="projectAddTask" class="btn primary">+ Dodaj task</button>
+          <button id="projectWorkspaceClose" class="btn ghost">Zamknij</button>
+        </div>
       </div>
 
       <div class="project-workspace-tabs">
@@ -339,6 +342,46 @@
       </div>
 
       <div id="projectWorkspaceBody"></div>
+    </div>
+  </div>
+
+
+  <div id="projectTaskModal" class="modal hidden">
+    <div class="modal-card compact-modal">
+      <div class="eyebrow" id="projectTaskEyebrow">TASK W PROJEKCIE</div>
+      <h2 id="projectTaskModalTitle">Dodaj task</h2>
+
+      <div class="schedule-form">
+        <label>Nazwa
+          <input id="projectTaskTitle" placeholder="Co trzeba dowieźć?">
+        </label>
+
+        <label>Priorytet
+          <select id="projectTaskPriority">
+            <option value="P1">P1 · Krytyczne</option>
+            <option value="P2" selected>P2 · Ważne</option>
+            <option value="P3">P3 · Dodatkowe</option>
+          </select>
+        </label>
+
+        <label>Estymacja
+          <div class="duration-custom">
+            <input id="projectTaskEstimate" type="number" min="0" step="5" placeholder="30">
+            <select id="projectTaskEstimateUnit">
+              <option value="minutes">minuty</option>
+              <option value="hours">godziny</option>
+            </select>
+          </div>
+          <small class="helper">Zostaw puste, jeśli nie wiesz.</small>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button id="projectTaskDelete" class="btn danger hidden">Usuń task</button>
+        <span class="spacer"></span>
+        <button id="projectTaskCancel" class="btn ghost">Anuluj</button>
+        <button id="projectTaskSave" class="btn primary">Zapisz task</button>
+      </div>
     </div>
   </div>
 
