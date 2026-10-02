@@ -1,6 +1,6 @@
 import { categories, loadLocal, persistLocal, dateKey, isoAt, localParts, newDay } from "./state.js";
 import { getLevelInfo, xpForTask } from "./levels.js";
-import { sendMagicLink, signInPassword, setPassword, signOut, sendPasswordReset, onAuth, cloudHasData, hydrateCloud, syncCloud, seedSyncFingerprints, deleteTaskRow } from "./supabase.js";
+import { sendMagicLink, signInPassword, setPassword, signOut, sendPasswordReset, onAuth, cloudHasData, hydrateCloud, syncCloud, seedSyncFingerprints, deleteTaskRow, deleteDailyLogRow } from "./supabase.js";
 
 let state=loadLocal();
 let user=null, cloudReady=false, syncTimer=null;
@@ -40,8 +40,38 @@ function renderLogList(selector,sections=null){
     <div class="log-time">${formatLogTime(x.createdAt)}</div>
     <div class="log-section">${esc(sectionLabel(x.section))}</div>
     <div class="log-copy"><strong>${esc(x.title)}</strong>${x.note?`<span>${esc(x.note)}</span>`:""}</div>
+    <div class="log-actions">
+      <button class="log-action" data-log-edit="${x.id}" title="Edytuj">✎</button>
+      <button class="log-action delete" data-log-delete="${x.id}" title="Usuń">×</button>
+    </div>
   </div>`).join("");
+
+  root.querySelectorAll("[data-log-edit]").forEach(btn=>btn.onclick=()=>{
+    const log=(state.dailyLogs||[]).find(x=>x.id===btn.dataset.logEdit); if(!log)return;
+    const title=prompt("Tytuł logu",log.title); if(title===null)return;
+    const note=prompt("Treść / notatka",log.note||""); if(note===null)return;
+    log.title=title.trim()||log.title;
+    log.note=note.trim();
+    save();renderAll();toast("Log zaktualizowany.");
+  });
+
+  root.querySelectorAll("[data-log-delete]").forEach(btn=>btn.onclick=async()=>{
+    const id=btn.dataset.logDelete;
+    const log=(state.dailyLogs||[]).find(x=>x.id===id); if(!log)return;
+    if(!confirm(`Usunąć log „${log.title}”?`))return;
+    state.dailyLogs=(state.dailyLogs||[]).filter(x=>x.id!==id);
+    persistLocal(state);renderAll();
+    try{
+      if(cloudReady&&user) await deleteDailyLogRow(id);
+      seedSyncFingerprints(state);
+      toast("Log usunięty.");
+    }catch(e){
+      console.error(e);
+      toast("Usunięto lokalnie, ale chmura zwróciła błąd.");
+    }
+  });
 }
+
 function sectionLabel(s){
   return ({capacity:"Tempo dnia",top3:"Wyniki dnia",money:"Ruch finansowy",minimums:"Podstawy",finance:"Finanse",body:"Ciało",projects:"Projekty"})[s]||s;
 }
@@ -607,7 +637,7 @@ function completeTask(id){
 }
 
 /* render */
-function renderAll(){renderToday();renderTasks();renderWeek();renderMoney();renderProjects();renderBody();renderProof();renderReviews();renderIdeas();renderLogList("#todayLogs");renderLogList("#financeLogs","finance");renderLogList("#bodyLogs","body");renderLogList("#projectsLogs","projects")}
+function renderAll(){renderToday();renderTasks();renderWeek();renderMoney();renderProjects();renderBody();renderProof();renderReviews();renderIdeas();renderLogList("#todayLogs");renderLogList("#financeLogs","finance");renderLogList("#bodyLogs","body");renderLogList("#projectsLogs","projects");if(activeProjectId)renderProjectWorkspace()}
 function renderToday(){
   const d=ensureDay();$("#todayDate").textContent=new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
   $("#modeStat").textContent=d.capacity.mode==="full"?"Pełny":d.capacity.mode==="survival"?"Minimalny":"Standardowy";
@@ -838,9 +868,53 @@ $("#saveFinance").onclick=()=>{
   save();renderAll();toast("Finanse zapisane.");
 };
 
+
+let activeProjectId=null;
+let activeProjectTab="overview";
+
+function projectTasks(id){
+  return state.tasks.filter(t=>{
+    const cat=String(t.category||"");
+    return cat===id || cat===`custom:${id}` || customCategoryLabel(cat)===state.projects[id]?.label;
+  });
+}
+function projectStats(id){
+  const tasks=projectTasks(id);
+  const doneCount=tasks.filter(done).length;
+  const planned=tasks.filter(t=>scheduled(t)).length;
+  const backlog=tasks.filter(t=>!done(t)&&!t.scheduledAt).length;
+  const pct=tasks.length?Math.round(doneCount/tasks.length*100):0;
+  return {tasks,doneCount,planned,backlog,pct};
+}
 function renderProjects(){
-  $("#projectsGrid").innerHTML=Object.entries(state.projects).map(([id,p])=>`<div class="panel content-card project-card"><small>Projekt</small><h3>${esc(p.label)}</h3><label>Status<select data-ps="${id}"><option ${p.status==="Główny"?"selected":""}>Główny</option><option ${p.status==="Aktywny"?"selected":""}>Aktywny</option><option ${p.status==="Podtrzymanie"?"selected":""}>Podtrzymanie</option><option ${p.status==="Wstrzymany"?"selected":""}>Wstrzymany</option></select></label><label>Następny ruch<input data-pn="${id}" value="${esc(p.nextAction||"")}"></label><button class="btn ghost project-save" data-project-save="${id}">Zapisz projekt</button></div>`).join("");
-  $$("[data-project-save]").forEach(b=>b.onclick=()=>{
+  const entries=Object.entries(state.projects);
+  $("#projectsGrid").innerHTML=entries.map(([id,p])=>{
+    const s=projectStats(id);
+    return `<div class="panel content-card project-card" data-project-open="${id}">
+      <small>Projekt</small>
+      <h3>${esc(p.label)}</h3>
+      <div class="project-stats-mini">
+        <span>${s.backlog} backlog</span><span>${s.planned} planned</span><span>${s.doneCount} done</span>
+      </div>
+      <div class="project-progress"><span style="width:${s.pct}%"></span></div>
+      <label>Status
+        <select data-ps="${id}">
+          <option ${p.status==="Główny"?"selected":""}>Główny</option>
+          <option ${p.status==="Aktywny"?"selected":""}>Aktywny</option>
+          <option ${p.status==="Podtrzymanie"?"selected":""}>Podtrzymanie</option>
+          <option ${p.status==="Wstrzymany"?"selected":""}>Wstrzymany</option>
+        </select>
+      </label>
+      <label>Następny ruch<input data-pn="${id}" value="${esc(p.nextAction||"")}"></label>
+      <div class="project-card-footer">
+        <button class="btn primary project-open" data-project-open-btn="${id}">Otwórz workspace</button>
+        <button class="btn ghost project-save" data-project-save="${id}">Zapisz</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  $$("[data-project-save]").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
     const id=b.dataset.projectSave;
     const status=$(`[data-ps="${id}"]`).value;
     const nextAction=$(`[data-pn="${id}"]`).value.trim();
@@ -849,7 +923,100 @@ function renderProjects(){
     addDailyLog("projects",`Zapisano ${state.projects[id].label}`,`Status: ${status}${nextAction?` · Następny ruch: ${nextAction}`:""}`,{id,status,nextAction});
     save();renderAll();toast("Projekt zapisany.");
   });
+  $$("[data-project-open-btn]").forEach(b=>b.onclick=e=>{e.stopPropagation();openProjectWorkspace(b.dataset.projectOpenBtn)});
+  $$("[data-project-open]").forEach(card=>card.onclick=e=>{
+    if(e.target.closest("input,select,button,label"))return;
+    openProjectWorkspace(card.dataset.projectOpen);
+  });
 }
+
+function openProjectWorkspace(id){
+  if(!state.projects[id])return;
+  activeProjectId=id;activeProjectTab="overview";
+  $("#projectWorkspaceModal").classList.remove("hidden");
+  renderProjectWorkspace();
+}
+function closeProjectWorkspace(){
+  $("#projectWorkspaceModal").classList.add("hidden");
+  activeProjectId=null;
+}
+$("#projectWorkspaceClose").onclick=closeProjectWorkspace;
+$("#projectWorkspaceModal").onclick=e=>{if(e.target.id==="projectWorkspaceModal")closeProjectWorkspace()};
+$$("[data-project-tab]").forEach(b=>b.onclick=()=>{
+  activeProjectTab=b.dataset.projectTab;
+  $$("[data-project-tab]").forEach(x=>x.classList.toggle("active",x===b));
+  renderProjectWorkspace();
+});
+
+function projectTaskCard(t){
+  return `<div class="pm-task-row ${done(t)?"done":""}">
+    <span class="pm-priority">${t.priority}</span>
+    <div><strong>${esc(t.title)}</strong><small>${esc(customCategoryLabel(t.category))} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small></div>
+    <span class="badge">${done(t)?"Done":t.scheduledAt?"Planned":"Backlog"}</span>
+    <div class="pm-row-actions">
+      ${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Edytuj blok":"Zaplanuj"}</button><button class="btn ghost" data-pm-done="${t.id}">✓</button>`:""}
+    </div>
+  </div>`;
+}
+function wireProjectTaskActions(){
+  $$("[data-pm-plan]").forEach(b=>b.onclick=()=>openScheduleModal(b.dataset.pmPlan));
+  $$("[data-pm-done]").forEach(b=>b.onclick=()=>completeTask(b.dataset.pmDone));
+}
+function renderProjectWorkspace(){
+  if(!activeProjectId||!state.projects[activeProjectId])return;
+  const p=state.projects[activeProjectId],s=projectStats(activeProjectId);
+  $("#projectWorkspaceTitle").textContent=p.label;
+  $("#projectWorkspaceMeta").textContent=`${p.status} · ${s.pct}% ukończone · ${s.tasks.length} tasków`;
+  $$("[data-project-tab]").forEach(x=>x.classList.toggle("active",x.dataset.projectTab===activeProjectTab));
+  const root=$("#projectWorkspaceBody");
+
+  if(activeProjectTab==="overview"){
+    const recent=[...s.tasks].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6);
+    root.innerHTML=`<div class="pm-overview-grid">
+      <div>
+        <div class="pm-stat-grid">
+          <div class="pm-stat"><span>Progress</span><strong>${s.pct}%</strong></div>
+          <div class="pm-stat"><span>Backlog</span><strong>${s.backlog}</strong></div>
+          <div class="pm-stat"><span>Planned</span><strong>${s.planned}</strong></div>
+          <div class="pm-stat"><span>Done</span><strong>${s.doneCount}</strong></div>
+        </div>
+        <div class="panel pm-recent"><div class="section-title"><div><h3>Ostatnie taski</h3><p>Najświeższa praca w projekcie.</p></div></div>
+          <div class="pm-task-list">${recent.length?recent.map(projectTaskCard).join(""):'<div class="pm-empty">Ten projekt nie ma jeszcze tasków.</div>'}</div>
+        </div>
+      </div>
+      <div>
+        <div class="pm-next"><span>NEXT ACTION</span><strong>${esc(p.nextAction||"Nie ustawiono następnego ruchu.")}</strong></div>
+        <div class="panel" style="margin-top:14px">
+          <div class="section-title"><div><h3>Status projektu</h3><p>${esc(p.status)}</p></div></div>
+          <div class="project-progress"><span style="width:${s.pct}%"></span></div>
+        </div>
+      </div>
+    </div>`;
+    wireProjectTaskActions();
+  }
+
+  if(activeProjectTab==="kanban"){
+    const backlog=s.tasks.filter(t=>!done(t)&&!t.scheduledAt);
+    const planned=s.tasks.filter(t=>scheduled(t));
+    const completed=s.tasks.filter(done);
+    const col=(name,list,key)=>`<div class="kanban-col"><div class="kanban-head"><h3>${name}</h3><span class="kanban-count">${list.length}</span></div><div class="kanban-stack">${list.length?list.map(t=>`<div class="kanban-card"><strong>${esc(t.title)}</strong><small>${t.priority} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small><div class="kanban-card-actions">${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Przenieś":"Zaplanuj"}</button><button class="btn ghost" data-pm-done="${t.id}">Done</button>`:""}</div></div>`).join(""):'<div class="helper">Pusto</div>'}</div></div>`;
+    root.innerHTML=`<div class="kanban-board">${col("Backlog",backlog,"backlog")}${col("Planned",planned,"planned")}${col("Done",completed,"done")}</div>`;
+    wireProjectTaskActions();
+  }
+
+  if(activeProjectTab==="list"){
+    const list=[...s.tasks].sort((a,b)=>done(a)-done(b)||String(a.priority).localeCompare(String(b.priority)));
+    root.innerHTML=`<div class="panel"><div class="pm-task-list">${list.length?list.map(projectTaskCard).join(""):'<div class="pm-empty">Brak tasków w tym projekcie.</div>'}</div></div>`;
+    wireProjectTaskActions();
+  }
+
+  if(activeProjectTab==="timeline"){
+    const list=s.tasks.filter(t=>t.scheduledAt).sort((a,b)=>new Date(a.scheduledAt)-new Date(b.scheduledAt));
+    root.innerHTML=`<div class="panel"><div class="pm-timeline">${list.length?list.map(t=>`<div class="pm-time-row"><div class="pm-time-date">${new Date(t.scheduledAt).toLocaleString("pl-PL",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div><strong>${esc(t.title)}</strong><small>${t.priority} · ${formatEstimate(taskBlockMinutes(t))}</small></div><div>${done(t)?"✓":`<button class="btn ghost" data-pm-plan="${t.id}">Edytuj blok</button>`}</div></div>`).join(""):'<div class="pm-empty">Brak zaplanowanych bloków dla tego projektu.</div>'}</div></div>`;
+    wireProjectTaskActions();
+  }
+}
+
 function renderBody(){const b=body();$("#bodyEnergy").textContent=ensureDay().interview.energy;$("#bodyEnergyBar").style.width=(ensureDay().interview.energy*10)+"%";for(const [id,key] of [["bodySteps","steps"],["bodyWeight","weight"],["bodyWater","water"],["bodySleep","sleep"]]){$("#"+id).value=b[key]}$("#bodyWorkout").checked=!!b.workout}
 $("#saveBody").onclick=()=>{
   const b=body();
