@@ -1,0 +1,8 @@
+-- 001_task_details.sql
+-- Safe / idempotent. Required for Task Workspace.
+
+alter table public.tasks
+  add column if not exists notes text,
+  add column if not exists due_date date,
+  add column if not exists link_url text,
+  add column if not exists checklist jsonb not null default '[]'::jsonb;
