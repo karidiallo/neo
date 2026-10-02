@@ -65,12 +65,19 @@ export async function hydrateCloud(uid) {
     supabase.from("reviews").select("*").eq("user_id",uid).order("created_at",{ascending:false}),
     supabase.from("finance_snapshots").select("*").eq("user_id",uid),
     supabase.from("body_logs").select("*").eq("user_id",uid),
-    supabase.from("daily_logs").select("*").eq("user_id",uid).order("created_at",{ascending:false}),
+    supabase.from("daily_logs").select("*").eq("user_id",uid).order("created_at",{ascending:false})
+  ]);
+  const bad=reqs.find(r=>r.error); if(bad) throw bad.error;
+  const [stats,days,tasks,projects,ideas,proof,reviews,finance,body,dailyLogs]=reqs;
+
+  // Meal Planner is an add-on. If its migration has not been run yet,
+  // the rest of Personal OS must still load normally.
+  const [mealPlansRaw, mealRecipesRaw] = await Promise.all([
     supabase.from("meal_plans").select("*").eq("user_id",uid),
     supabase.from("meal_recipes").select("*").eq("user_id",uid)
   ]);
-  const bad=reqs.find(r=>r.error); if(bad) throw bad.error;
-  const [stats,days,tasks,projects,ideas,proof,reviews,finance,body,dailyLogs,mealPlans,mealRecipes]=reqs;
+  const mealPlans = mealPlansRaw.error ? {data:[]} : mealPlansRaw;
+  const mealRecipes = mealRecipesRaw.error ? {data:[]} : mealRecipesRaw;
   const state=defaults();
   if(stats.data){state.xp=stats.data.xp||0;state.streak=stats.data.streak||0;state.lastReviewDate=stats.data.last_review_date||null}
   for(const r of days.data||[]) state.days[r.day]={
