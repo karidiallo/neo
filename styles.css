@@ -549,3 +549,101 @@ progress,.xpbar,.progress{
   .project-workspace-modal{padding:8px}
   .project-workspace-shell{width:100%;min-height:96vh;border-radius:18px}
 }
+
+
+/* PM FIX — projects are workspaces, not settings forms */
+.project-card{
+  display:flex;
+  flex-direction:column;
+  min-height:180px;
+}
+.project-card h3{font-size:20px;margin:4px 0 0}
+.project-card .project-card-footer{margin-top:auto}
+.project-card .btn.primary{width:100%}
+
+.project-workspace-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.btn.danger{
+  background:#93465b;
+  color:#fff;
+  border-color:#93465b;
+}
+
+.pm-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+}
+.pm-toolbar-copy h3{margin:0}
+.pm-toolbar-copy p{margin:3px 0 0;color:var(--neo-muted);font-size:10px}
+
+.pm-task-row{
+  grid-template-columns:auto minmax(0,1fr) auto auto!important;
+}
+.pm-task-actions{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.pm-icon-btn{
+  border:1px solid var(--neo-line);
+  background:rgba(255,255,255,.72);
+  border-radius:9px;
+  min-width:32px;
+  height:32px;
+  cursor:pointer;
+  font-size:10px;
+  font-weight:800;
+}
+.pm-icon-btn.delete{color:#93465b}
+
+.kanban-card{
+  transition:.15s ease;
+}
+.kanban-card:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 25px rgba(23,20,17,.06);
+}
+.kanban-card-actions{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+}
+.kanban-card-actions .btn{
+  padding:6px 8px!important;
+  font-size:9px!important;
+}
+
+.pm-board-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.pm-board-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--neo-wine);
+}
+.pm-board-dot.planned{background:var(--neo-gold)}
+.pm-board-dot.done{background:#6f8063}
+
+.pm-empty strong{
+  display:block;
+  color:var(--neo-ink);
+  margin-bottom:4px;
+}
+.pm-empty .btn{margin-top:10px}
+
+@media(max-width:700px){
+  .project-workspace-head{flex-direction:column}
+  .project-workspace-actions{width:100%}
+  .project-workspace-actions .btn{flex:1}
+  .pm-task-row{grid-template-columns:auto 1fr!important}
+  .pm-task-row > .badge,.pm-task-actions{grid-column:2}
+}
