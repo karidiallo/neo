@@ -961,45 +961,93 @@ function renderTaskChecklist(){
     return;
   }
 
-  root.innerHTML=list.map((item,i)=>`
+  const open=list.filter(x=>!x.done);
+  const completed=list.filter(x=>x.done);
+
+  const itemHtml=(item,i,sourceList)=>`
     <div class="task-check-item ${item.done?"done":""}" data-check-id="${item.id}">
       <input class="task-check-box" type="checkbox" ${item.done?"checked":""} data-check-toggle="${item.id}">
-      <input class="task-check-text" value="${esc(item.text||"")}" data-check-text="${item.id}">
+      <div class="task-check-copy">
+        <span class="task-check-label">${esc(item.text||"Bez nazwy")}</span>
+        ${item.done?'<small>Ukończone</small>':""}
+      </div>
       <div class="task-check-actions">
-        <button data-check-up="${item.id}" title="W górę" ${i===0?"disabled":""}>↑</button>
-        <button data-check-down="${item.id}" title="W dół" ${i===list.length-1?"disabled":""}>↓</button>
+        <button data-check-edit="${item.id}" title="Edytuj">✎</button>
+        <button data-check-up="${item.id}" title="W górę" ${sourceList.indexOf(item)===0?"disabled":""}>↑</button>
+        <button data-check-down="${item.id}" title="W dół" ${sourceList.indexOf(item)===sourceList.length-1?"disabled":""}>↓</button>
         <button class="delete" data-check-delete="${item.id}" title="Usuń">×</button>
       </div>
-    </div>`).join("");
+    </div>`;
+
+  root.innerHTML=`
+    <div class="task-check-section">
+      <div class="task-check-section-head">
+        <strong>Do zrobienia</strong>
+        <span>${open.length}</span>
+      </div>
+      <div class="task-check-section-list">
+        ${open.length?open.map((item,i)=>itemHtml(item,i,open)).join(""):'<div class="task-check-empty">Wszystkie kroki ukończone 🎉</div>'}
+      </div>
+    </div>
+
+    <details class="task-check-completed" ${completed.length?"open":""}>
+      <summary>
+        <span>Ukończone</span>
+        <b>${completed.length}</b>
+      </summary>
+      <div class="task-check-section-list">
+        ${completed.length?completed.map((item,i)=>itemHtml(item,i,completed)).join(""):'<div class="task-check-empty">Jeszcze nic nie ukończono.</div>'}
+      </div>
+    </details>`;
 
   $$("[data-check-toggle]").forEach(el=>el.onchange=()=>{
     const item=list.find(x=>x.id===el.dataset.checkToggle); if(!item)return;
     item.done=el.checked;
-    save();renderTaskChecklist();renderAll();
+    item.completedAt=el.checked ? new Date().toISOString() : null;
+    save();
+    renderTaskChecklist();
+    renderAll();
   });
 
-  $$("[data-check-text]").forEach(el=>el.onchange=()=>{
-    const item=list.find(x=>x.id===el.dataset.checkText); if(!item)return;
-    item.text=el.value.trim()||item.text;
-    save();renderTaskChecklist();renderAll();
+  $$("[data-check-edit]").forEach(el=>el.onclick=()=>{
+    const item=list.find(x=>x.id===el.dataset.checkEdit); if(!item)return;
+    const next=prompt("Edytuj subtask",item.text||"");
+    if(next===null)return;
+    const clean=next.trim();
+    if(!clean)return;
+    item.text=clean;
+    save();
+    renderTaskChecklist();
+    renderAll();
   });
 
   $$("[data-check-delete]").forEach(el=>el.onclick=()=>{
     const index=list.findIndex(x=>x.id===el.dataset.checkDelete); if(index<0)return;
     list.splice(index,1);
-    save();renderTaskChecklist();renderAll();
+    save();
+    renderTaskChecklist();
+    renderAll();
   });
 
   $$("[data-check-up]").forEach(el=>el.onclick=()=>{
-    const i=list.findIndex(x=>x.id===el.dataset.checkUp); if(i<=0)return;
-    [list[i-1],list[i]]=[list[i],list[i-1]];
-    save();renderTaskChecklist();
+    const id=el.dataset.checkUp;
+    const group=list.filter(x=>x.done===list.find(y=>y.id===id)?.done);
+    const gi=group.findIndex(x=>x.id===id); if(gi<=0)return;
+    const a=list.findIndex(x=>x.id===group[gi-1].id);
+    const b=list.findIndex(x=>x.id===id);
+    [list[a],list[b]]=[list[b],list[a]];
+    save();renderTaskChecklist();renderAll();
   });
 
   $$("[data-check-down]").forEach(el=>el.onclick=()=>{
-    const i=list.findIndex(x=>x.id===el.dataset.checkDown); if(i<0||i>=list.length-1)return;
-    [list[i],list[i+1]]=[list[i+1],list[i]];
-    save();renderTaskChecklist();
+    const id=el.dataset.checkDown;
+    const current=list.find(y=>y.id===id); if(!current)return;
+    const group=list.filter(x=>x.done===current.done);
+    const gi=group.findIndex(x=>x.id===id); if(gi<0||gi>=group.length-1)return;
+    const a=list.findIndex(x=>x.id===id);
+    const b=list.findIndex(x=>x.id===group[gi+1].id);
+    [list[a],list[b]]=[list[b],list[a]];
+    save();renderTaskChecklist();renderAll();
   });
 }
 
@@ -1007,7 +1055,7 @@ function addChecklistItem(){
   const t=state.tasks.find(x=>x.id===activeTaskDetailId); if(!t)return;
   const input=$("#taskChecklistNew");
   const text=input.value.trim(); if(!text)return;
-  taskChecklist(t).push({id:uuid(),text,done:false});
+  taskChecklist(t).push({id:uuid(),text,done:false,completedAt:null});
   input.value="";
   save();renderTaskChecklist();renderAll();
   setTimeout(()=>input.focus(),10);
