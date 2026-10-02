@@ -868,3 +868,105 @@ $("#ideaForm").onsubmit=e=>{e.preventDefault();const v=$("#ideaTitle").value.tri
 
 window.addEventListener("online",()=>{syncStatus("online");save()});window.addEventListener("offline",()=>syncStatus("offline — zapis lokalny"));
 ensureDay();renderAll();initAuth();
+
+
+/* NEO v2 Hybrid gaming layer */
+const neoMoney = (v)=>{
+  const n=Number(String(v??"").replace(/[^\d,.-]/g,"").replace(",","."));
+  if(!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("pl-PL",{style:"currency",currency:"PLN",maximumFractionDigits:0}).format(n);
+};
+
+function neoTodayXp(){
+  const today=todayKey;
+  return state.tasks
+    .filter(t=>t.completedAt && localParts(t.completedAt).date===today)
+    .reduce((sum,t)=>sum+xpForTask(t),0);
+}
+
+function neoCurrentStreak(){
+  let streak=0;
+  let d=new Date();
+  for(let i=0;i<365;i++){
+    const key=d.toISOString().slice(0,10);
+    const hasDone=state.tasks.some(t=>t.completedAt && localParts(t.completedAt).date===key);
+    if(hasDone) streak++;
+    else if(i===0){}
+    else break;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+function neoLevelInfo(){
+  const xp=Number(state.xp||0);
+  const rows = (typeof levelRows!=="undefined" && Array.isArray(levelRows)) ? levelRows : [];
+  if(rows.length){
+    let current=rows[0], next=rows[1]||null;
+    rows.forEach((r,i)=>{ if(xp>=Number(r.minXP||r.minXp||r.min_xp||0)){ current=r; next=rows[i+1]||null; }});
+    return {
+      level:current.level||1,
+      label:current.label||current.name||"Level",
+      min:Number(current.minXP||current.minXp||current.min_xp||0),
+      nextMin:next?Number(next.minXP||next.minXp||next.min_xp||0):Math.max(xp,1)
+    };
+  }
+  return {level:1,label:"Stabilizacja",min:0,nextMin:100};
+}
+
+function renderGamingLayer(){
+  const q=id=>document.getElementById(id);
+  if(!q("gamingSummary")) return;
+
+  const li=neoLevelInfo();
+  q("gamingLevel").textContent=li.level;
+  q("gamingRank").textContent=li.label;
+  q("gamingTodayXp").textContent=`+${neoTodayXp()}`;
+  q("gamingStreak").textContent=neoCurrentStreak();
+
+  const doneToday=state.tasks.filter(t=>t.completedAt && localParts(t.completedAt).date===todayKey).length;
+  q("gamingDone").textContent=doneToday;
+
+  const day=state.days?.[todayKey]||{};
+  const mode=day.dayMode||day.day_mode||"standard";
+  const modeLabel={full:"Pełny",standard:"Standard",survival:"Minimalny"}[mode]||mode;
+  const energy=day.currentEnergy ?? day.current_energy ?? day.energy ?? null;
+  q("gamingCapacity").textContent=modeLabel;
+  q("gamingEnergy").textContent=energy?`Energy ${energy}/10`:"current pace";
+
+  const f=state.finance?.[todayKey] || state.financeSnapshots?.[todayKey] || state.finance || {};
+  const cash=f.cash ?? "";
+  const protectedV=f.protected ?? "";
+  const incoming=f.incoming ?? "";
+  const revToday=f.revenueToday ?? f.revenue_today ?? "";
+  const revMonth=f.revenueMonth ?? f.revenue_month ?? "";
+
+  q("gamingCash").textContent=neoMoney(cash);
+  q("gamingWealthMain").textContent=neoMoney(cash);
+  q("gamingProtected").textContent=neoMoney(protectedV);
+  q("gamingIncoming").textContent=neoMoney(incoming);
+  q("gamingRevenueToday").textContent=neoMoney(revToday);
+  q("gamingRevenueMonth").textContent=neoMoney(revMonth);
+
+  const cashNum=Number(String(cash??"").replace(/[^\d,.-]/g,"").replace(",","."))||0;
+  const milestones=[500,1000,3000,5000,10000,20000,50000,100000];
+  const next=milestones.find(x=>cashNum<x)||100000;
+  const prev=[...milestones].reverse().find(x=>x<=cashNum)||0;
+  const pct=Math.max(0,Math.min(100,(cashNum-prev)/(next-prev||1)*100));
+  q("gamingWealthBar").style.width=pct+"%";
+  q("gamingWealthSub").textContent=`Next milestone: ${neoMoney(next)}`;
+}
+
+(function(){
+  const close=document.getElementById("neoLevelClose");
+  if(close) close.onclick=()=>document.getElementById("neoLevelModal")?.classList.add("hidden");
+})();
+
+/* Wrap existing renderAll so hybrid metrics refresh with every UI render. */
+const __neoOriginalRenderAll = renderAll;
+renderAll = function(...args){
+  const result = __neoOriginalRenderAll(...args);
+  try{ renderGamingLayer(); }catch(e){ console.warn("gaming layer",e); }
+  return result;
+};
+try{ renderGamingLayer(); }catch(e){}
