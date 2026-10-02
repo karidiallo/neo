@@ -41,6 +41,13 @@ export async function deleteTaskRow(id) {
   if (error) throw error;
 }
 
+
+export async function deleteDailyLogRow(id) {
+  const { error } = await supabase.from("daily_logs").delete().eq("id", id);
+  if (error) throw error;
+}
+
+
 export async function cloudHasData(uid) {
   const {data,error}=await supabase.from("user_stats").select("user_id").eq("user_id",uid).maybeSingle();
   if(error) throw error;
