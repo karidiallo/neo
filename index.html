@@ -103,6 +103,7 @@
         <button class="nav" data-view="money">Finanse / BFI</button>
         <button class="nav" data-view="projects">Projekty</button>
         <button class="nav" data-view="body">Ciało</button>
+        <button class="nav" data-view="meals">Posiłki</button>
         <button class="nav" data-view="proof">Dowody</button>
       </div>
 
@@ -287,7 +288,49 @@
         <div id="bodyLogs" class="panel log-list"></div>
       </section>
 
-      <section id="view-proof" class="view">
+      
+      <section id="view-meals" class="view">
+        <header class="page-head">
+          <div>
+            <div class="eyebrow">FOOD PLANNER</div>
+            <h1>Posiłki</h1>
+            <p>Planuj jedzenie z wyprzedzeniem. Każdy posiłek jest zsynchronizowany z głównym kalendarzem.</p>
+          </div>
+          <button id="mealAddBtn" class="btn primary">+ Dodaj posiłek</button>
+        </header>
+
+        <div class="meal-kpis">
+          <div class="metric-tile"><span>DZISIAJ</span><strong id="mealTodayCount">0</strong><small>zaplanowane</small></div>
+          <div class="metric-tile"><span>UGOTOWANE</span><strong id="mealPreparedCount">0</strong><small>dzisiaj</small></div>
+          <div class="metric-tile"><span>ZJEDZONE</span><strong id="mealEatenCount">0</strong><small>dzisiaj</small></div>
+          <div class="metric-tile"><span>XP</span><strong id="mealXpCount">0</strong><small>za posiłki dziś</small></div>
+        </div>
+
+        <div class="meal-day-tabs">
+          <button class="meal-day-tab active" data-meal-day-offset="0">Dzisiaj</button>
+          <button class="meal-day-tab" data-meal-day-offset="1">Jutro</button>
+          <button class="meal-day-tab" data-meal-day-offset="2">+2 dni</button>
+          <button class="meal-day-tab" data-meal-day-offset="3">+3 dni</button>
+        </div>
+
+        <div class="meal-layout">
+          <div class="panel">
+            <div class="section-title"><div><h3 id="mealDayHeading">Dzisiaj</h3><p>Posiłki w kolejności godzin.</p></div></div>
+            <div id="mealPlannerList" class="meal-planner-list"></div>
+          </div>
+          <div class="meal-side-stack">
+            <div class="panel">
+              <div class="section-title"><div><h3>Przepisy</h3><p>Zapisane posiłki do ponownego użycia.</p></div></div>
+              <div id="mealRecipeLibrary" class="meal-recipe-library"></div>
+            </div>
+            <div class="panel">
+              <div class="section-title"><div><h3>Produkty na 4 dni</h3><p>Automatycznie z zaplanowanych posiłków.</p></div></div>
+              <div id="mealProductList" class="meal-product-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+<section id="view-proof" class="view">
         <header class="simple-head"><div><div class="eyebrow">DOWODY</div><h1>Co dowiozłaś</h1></div></header>
         <div class="metrics">
           <div><span>Wszystkie</span><strong id="proofCount">0</strong></div>
@@ -586,6 +629,26 @@
         <button id="accountSave" class="btn primary">Zapisz hasło</button>
       </div>
       <div id="accountMessage" class="helper"></div>
+    </div>
+  </div>
+
+  
+  <div id="mealModal" class="modal hidden">
+    <div class="modal-card meal-modal-card">
+      <div class="eyebrow">MEAL</div>
+      <h2 id="mealModalTitle">Dodaj posiłek</h2>
+      <div class="meal-form-grid">
+        <label>Nazwa posiłku<input id="mealNameInput" placeholder="np. Kurczak teriyaki z ryżem"></label>
+        <label>Typ<select id="mealTypeInput"><option>Śniadanie</option><option>Lunch</option><option selected>Obiad</option><option>Kolacja</option><option>Przekąska</option></select></label>
+        <label>Data<input id="mealDateInput" type="date"></label>
+        <label>Godzina<input id="mealTimeInput" type="time"></label>
+        <label>Kalorie <span class="helper">opcjonalnie</span><input id="mealCaloriesInput" type="number" min="0" placeholder="650"></label>
+        <label>Białko g <span class="helper">opcjonalnie</span><input id="mealProteinInput" type="number" min="0" placeholder="45"></label>
+      </div>
+      <label>Produkty / składniki<textarea id="mealIngredientsInput" class="meal-textarea" placeholder="Jeden produkt na linię&#10;200 g kurczaka&#10;100 g ryżu&#10;warzywa"></textarea></label>
+      <label>Przepis / przygotowanie<textarea id="mealRecipeInput" class="meal-textarea" placeholder="Kroki przygotowania…"></textarea></label>
+      <label class="meal-save-recipe-row"><input id="mealSaveRecipeInput" type="checkbox"><span>Zapisz ten posiłek również jako przepis</span></label>
+      <div class="modal-actions"><button id="mealDeleteBtn" class="btn danger hidden">Usuń</button><span class="spacer"></span><button id="mealCancelBtn" class="btn ghost">Anuluj</button><button id="mealSaveBtn" class="btn primary">Zapisz posiłek</button></div>
     </div>
   </div>
 
