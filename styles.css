@@ -869,3 +869,111 @@ progress,.xpbar,.progress{
   .task-detail-modal{padding:8px}
   .task-detail-shell{width:100%;min-height:96vh;border-radius:18px}
 }
+
+
+/* CHECKLIST FIX v2 — completed items remain visible + completion summary */
+.task-checklist-list{
+  display:grid;
+  gap:14px;
+}
+.task-check-section{
+  display:grid;
+  gap:7px;
+}
+.task-check-section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 2px;
+  font-size:10px;
+  color:var(--neo-muted);
+}
+.task-check-section-head strong{
+  color:var(--neo-ink);
+  font-size:11px;
+}
+.task-check-section-head span,
+.task-check-completed summary b{
+  min-width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:rgba(23,20,17,.06);
+  font-size:9px;
+}
+.task-check-section-list{
+  display:grid;
+  gap:7px;
+}
+.task-check-copy{
+  min-width:0;
+}
+.task-check-label{
+  display:block;
+  color:var(--neo-ink);
+  font-size:11px;
+  font-weight:700;
+  line-height:1.4;
+  word-break:break-word;
+}
+.task-check-copy small{
+  display:block;
+  margin-top:2px;
+  color:var(--neo-muted);
+  font-size:8px;
+  font-weight:700;
+}
+.task-check-item.done{
+  opacity:.72!important;
+  background:rgba(243,238,233,.72)!important;
+}
+.task-check-item.done .task-check-label{
+  color:var(--neo-muted)!important;
+  text-decoration:line-through!important;
+  text-decoration-thickness:1px!important;
+}
+.task-check-completed{
+  border-top:1px solid var(--neo-line);
+  padding-top:10px;
+}
+.task-check-completed summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-size:11px;
+  font-weight:800;
+  color:var(--neo-ink);
+  user-select:none;
+}
+.task-check-completed summary::-webkit-details-marker{display:none}
+.task-check-completed summary::before{
+  content:"›";
+  display:inline-block;
+  margin-right:6px;
+  transition:.15s ease;
+}
+.task-check-completed[open] summary::before{
+  transform:rotate(90deg);
+}
+.task-check-completed summary span{
+  flex:1;
+}
+.task-check-completed .task-check-section-list{
+  margin-top:8px;
+}
+.task-check-empty{
+  padding:12px;
+  border:1px dashed var(--neo-line);
+  border-radius:11px;
+  color:var(--neo-muted);
+  font-size:10px;
+  text-align:center;
+}
+/* retire the old input-based checklist text presentation */
+.task-check-text{
+  display:none!important;
+}
