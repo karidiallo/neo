@@ -977,3 +977,61 @@ progress,.xpbar,.progress{
 .task-check-text{
   display:none!important;
 }
+
+
+/* HOTFIX — checklist completed rows layout */
+.task-check-item{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+
+.task-check-box{
+  flex:0 0 18px!important;
+  width:18px!important;
+  height:18px!important;
+  margin:0!important;
+}
+
+.task-check-copy{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  width:auto!important;
+}
+
+.task-check-label{
+  display:block!important;
+  width:auto!important;
+  max-width:100%!important;
+  white-space:normal!important;
+  word-break:normal!important;
+  overflow-wrap:anywhere!important;
+  line-height:1.4!important;
+}
+
+.task-check-actions{
+  flex:0 0 auto!important;
+  display:flex!important;
+  gap:4px!important;
+  margin-left:auto!important;
+}
+
+.task-check-completed,
+.task-check-completed .task-check-section-list,
+.task-check-section,
+.task-check-section-list{
+  width:100%!important;
+  min-width:0!important;
+}
+
+.task-check-completed .task-check-item{
+  grid-template-columns:none!important;
+}
+
+.task-checklist-add{
+  position:relative!important;
+  z-index:1!important;
+  clear:both!important;
+}
