@@ -65,10 +65,12 @@ export async function hydrateCloud(uid) {
     supabase.from("reviews").select("*").eq("user_id",uid).order("created_at",{ascending:false}),
     supabase.from("finance_snapshots").select("*").eq("user_id",uid),
     supabase.from("body_logs").select("*").eq("user_id",uid),
-    supabase.from("daily_logs").select("*").eq("user_id",uid).order("created_at",{ascending:false})
+    supabase.from("daily_logs").select("*").eq("user_id",uid).order("created_at",{ascending:false}),
+    supabase.from("meal_plans").select("*").eq("user_id",uid),
+    supabase.from("meal_recipes").select("*").eq("user_id",uid)
   ]);
   const bad=reqs.find(r=>r.error); if(bad) throw bad.error;
-  const [stats,days,tasks,projects,ideas,proof,reviews,finance,body,dailyLogs]=reqs;
+  const [stats,days,tasks,projects,ideas,proof,reviews,finance,body,dailyLogs,mealPlans,mealRecipes]=reqs;
   const state=defaults();
   if(stats.data){state.xp=stats.data.xp||0;state.streak=stats.data.streak||0;state.lastReviewDate=stats.data.last_review_date||null}
   for(const r of days.data||[]) state.days[r.day]={
@@ -96,6 +98,8 @@ export async function hydrateCloud(uid) {
   state.dailyLogs=(dailyLogs.data||[]).map(r=>({
     id:r.id,date:r.day,section:r.section,title:r.title,note:r.note||"",payload:r.payload||{},createdAt:r.created_at
   }));
+  state.mealPlans=(mealPlans.data||[]).map(r=>({id:r.id,taskId:r.task_id,name:r.name,mealType:r.meal_type,date:r.meal_date,time:String(r.meal_time||"").slice(0,5),ingredients:r.ingredients||"",recipe:r.recipe||"",calories:r.calories,protein:r.protein,preparedAt:r.prepared_at,eatenAt:r.eaten_at,xpAwarded:!!r.xp_awarded,createdAt:r.created_at}));
+  state.mealRecipes=(mealRecipes.data||[]).map(r=>({id:r.id,name:r.name,mealType:r.meal_type,ingredients:r.ingredients||"",recipe:r.recipe||"",calories:r.calories,protein:r.protein,createdAt:r.created_at}));
   return state;
 }
 
@@ -115,6 +119,8 @@ export function seedSyncFingerprints(state) {
   lastFingerprints.finance = fp(state.financeSnapshots||{});
   lastFingerprints.body = fp(state.bodyLogs||{});
   lastFingerprints.logs = fp(state.dailyLogs||[]);
+  lastFingerprints.meals = fp(state.mealPlans||[]);
+  lastFingerprints.recipes = fp(state.mealRecipes||[]);
 }
 
 export async function syncCloud(uid,state,{force=false}={}) {
@@ -211,5 +217,14 @@ export async function syncCloud(uid,state,{force=false}={}) {
     })),{onConflict:"id"}));
   }
 
+  if(changed("meals",state.mealPlans||[]) && state.mealPlans.length){
+    await grab(supabase.from("meal_plans").upsert(state.mealPlans.map(m=>({id:m.id,user_id:uid,task_id:m.taskId||null,name:m.name,meal_type:m.mealType||"Posiłek",meal_date:m.date,meal_time:m.time,ingredients:m.ingredients||null,recipe:m.recipe||null,calories:m.calories??null,protein:m.protein??null,prepared_at:m.preparedAt||null,eaten_at:m.eatenAt||null,xp_awarded:!!m.xpAwarded,created_at:m.createdAt||now,updated_at:now})),{onConflict:"id"}));
+  }
+  if(changed("recipes",state.mealRecipes||[]) && state.mealRecipes.length){
+    await grab(supabase.from("meal_recipes").upsert(state.mealRecipes.map(r=>({id:r.id,user_id:uid,name:r.name,meal_type:r.mealType||"Posiłek",ingredients:r.ingredients||null,recipe:r.recipe||null,calories:r.calories??null,protein:r.protein??null,created_at:r.createdAt||now,updated_at:now})),{onConflict:"id"}));
+  }
+
   if(errors.length) throw errors[0];
 }
+
+export async function deleteMealPlanRow(id) { const { error } = await supabase.from("meal_plans").delete().eq("id", id); if(error) throw error; }
