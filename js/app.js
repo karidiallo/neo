@@ -869,8 +869,10 @@ $("#saveFinance").onclick=()=>{
 };
 
 
+
 let activeProjectId=null;
 let activeProjectTab="overview";
+let projectTaskEditId=null;
 
 function projectTasks(id){
   return state.tasks.filter(t=>{
@@ -878,143 +880,315 @@ function projectTasks(id){
     return cat===id || cat===`custom:${id}` || customCategoryLabel(cat)===state.projects[id]?.label;
   });
 }
+
 function projectStats(id){
   const tasks=projectTasks(id);
   const doneCount=tasks.filter(done).length;
-  const planned=tasks.filter(t=>scheduled(t)).length;
+  const planned=tasks.filter(t=>!done(t)&&!!t.scheduledAt).length;
   const backlog=tasks.filter(t=>!done(t)&&!t.scheduledAt).length;
   const pct=tasks.length?Math.round(doneCount/tasks.length*100):0;
   return {tasks,doneCount,planned,backlog,pct};
 }
+
 function renderProjects(){
   const entries=Object.entries(state.projects);
   $("#projectsGrid").innerHTML=entries.map(([id,p])=>{
     const s=projectStats(id);
     return `<div class="panel content-card project-card" data-project-open="${id}">
-      <small>Projekt</small>
-      <h3>${esc(p.label)}</h3>
-      <div class="project-stats-mini">
-        <span>${s.backlog} backlog</span><span>${s.planned} planned</span><span>${s.doneCount} done</span>
+      <div>
+        <small>Projekt</small>
+        <h3>${esc(p.label)}</h3>
+        <div class="project-stats-mini">
+          <span>${s.backlog} backlog</span>
+          <span>${s.planned} planned</span>
+          <span>${s.doneCount} done</span>
+        </div>
+        <div class="project-progress"><span style="width:${s.pct}%"></span></div>
+        <p class="helper" style="margin-top:8px">${s.tasks.length ? `${s.pct}% ukończone · ${s.tasks.length} tasków` : "Brak tasków — wejdź do workspace i dodaj pierwszy."}</p>
       </div>
-      <div class="project-progress"><span style="width:${s.pct}%"></span></div>
-      <label>Status
-        <select data-ps="${id}">
-          <option ${p.status==="Główny"?"selected":""}>Główny</option>
-          <option ${p.status==="Aktywny"?"selected":""}>Aktywny</option>
-          <option ${p.status==="Podtrzymanie"?"selected":""}>Podtrzymanie</option>
-          <option ${p.status==="Wstrzymany"?"selected":""}>Wstrzymany</option>
-        </select>
-      </label>
-      <label>Następny ruch<input data-pn="${id}" value="${esc(p.nextAction||"")}"></label>
       <div class="project-card-footer">
-        <button class="btn primary project-open" data-project-open-btn="${id}">Otwórz workspace</button>
-        <button class="btn ghost project-save" data-project-save="${id}">Zapisz</button>
+        <button class="btn primary" data-project-open-btn="${id}">Otwórz workspace</button>
       </div>
     </div>`;
   }).join("");
 
-  $$("[data-project-save]").forEach(b=>b.onclick=e=>{
+  $$("[data-project-open-btn]").forEach(b=>b.onclick=e=>{
     e.stopPropagation();
-    const id=b.dataset.projectSave;
-    const status=$(`[data-ps="${id}"]`).value;
-    const nextAction=$(`[data-pn="${id}"]`).value.trim();
-    state.projects[id].status=status;
-    state.projects[id].nextAction=nextAction;
-    addDailyLog("projects",`Zapisano ${state.projects[id].label}`,`Status: ${status}${nextAction?` · Następny ruch: ${nextAction}`:""}`,{id,status,nextAction});
-    save();renderAll();toast("Projekt zapisany.");
+    openProjectWorkspace(b.dataset.projectOpenBtn);
   });
-  $$("[data-project-open-btn]").forEach(b=>b.onclick=e=>{e.stopPropagation();openProjectWorkspace(b.dataset.projectOpenBtn)});
+
   $$("[data-project-open]").forEach(card=>card.onclick=e=>{
-    if(e.target.closest("input,select,button,label"))return;
+    if(e.target.closest("button"))return;
     openProjectWorkspace(card.dataset.projectOpen);
   });
 }
 
 function openProjectWorkspace(id){
   if(!state.projects[id])return;
-  activeProjectId=id;activeProjectTab="overview";
+  activeProjectId=id;
+  activeProjectTab="overview";
   $("#projectWorkspaceModal").classList.remove("hidden");
   renderProjectWorkspace();
 }
+
 function closeProjectWorkspace(){
   $("#projectWorkspaceModal").classList.add("hidden");
   activeProjectId=null;
 }
+
 $("#projectWorkspaceClose").onclick=closeProjectWorkspace;
-$("#projectWorkspaceModal").onclick=e=>{if(e.target.id==="projectWorkspaceModal")closeProjectWorkspace()};
+$("#projectWorkspaceModal").onclick=e=>{
+  if(e.target.id==="projectWorkspaceModal")closeProjectWorkspace();
+};
+
 $$("[data-project-tab]").forEach(b=>b.onclick=()=>{
   activeProjectTab=b.dataset.projectTab;
-  $$("[data-project-tab]").forEach(x=>x.classList.toggle("active",x===b));
   renderProjectWorkspace();
 });
 
-function projectTaskCard(t){
+function openProjectTaskModal(taskId=null){
+  if(!activeProjectId)return;
+  projectTaskEditId=taskId;
+  const t=taskId ? state.tasks.find(x=>x.id===taskId) : null;
+
+  $("#projectTaskModalTitle").textContent=t?"Edytuj task":"Dodaj task";
+  $("#projectTaskEyebrow").textContent=`${state.projects[activeProjectId].label.toUpperCase()} · TASK`;
+  $("#projectTaskTitle").value=t?.title||"";
+  $("#projectTaskPriority").value=t?.priority||"P2";
+
+  const mins=t?.estimateMinutes;
+  if(mins==null){
+    $("#projectTaskEstimate").value="";
+    $("#projectTaskEstimateUnit").value="minutes";
+  }else if(mins>=60 && mins%30===0){
+    $("#projectTaskEstimate").value=mins/60;
+    $("#projectTaskEstimateUnit").value="hours";
+  }else{
+    $("#projectTaskEstimate").value=mins;
+    $("#projectTaskEstimateUnit").value="minutes";
+  }
+
+  $("#projectTaskDelete").classList.toggle("hidden",!t);
+  $("#projectTaskModal").classList.remove("hidden");
+  setTimeout(()=>$("#projectTaskTitle").focus(),20);
+}
+
+$("#projectAddTask").onclick=()=>openProjectTaskModal();
+$("#projectTaskCancel").onclick=()=>$("#projectTaskModal").classList.add("hidden");
+
+$("#projectTaskSave").onclick=()=>{
+  if(!activeProjectId)return;
+  const title=$("#projectTaskTitle").value.trim();
+  if(!title){toast("Wpisz nazwę taska.");return}
+
+  const raw=$("#projectTaskEstimate").value.trim();
+  let estimateMinutes=null;
+  if(raw!==""){
+    const n=Number(raw);
+    if(!Number.isFinite(n)||n<=0){toast("Estymacja musi być większa od zera albo pusta.");return}
+    estimateMinutes=$("#projectTaskEstimateUnit").value==="hours" ? Math.round(n*60) : Math.round(n);
+  }
+
+  if(projectTaskEditId){
+    const t=state.tasks.find(x=>x.id===projectTaskEditId);
+    if(!t)return;
+    t.title=title;
+    t.priority=$("#projectTaskPriority").value;
+    t.estimateMinutes=estimateMinutes;
+    t.category=activeProjectId;
+  }else{
+    state.tasks.unshift({
+      id:uuid(),
+      title,
+      category:activeProjectId,
+      priority:$("#projectTaskPriority").value,
+      estimateMinutes,
+      actualMinutes:null,
+      scheduledAt:null,
+      scheduledMinutes:null,
+      completedAt:null,
+      status:"unscheduled",
+      createdAt:new Date().toISOString()
+    });
+  }
+
+  save();
+  $("#projectTaskModal").classList.add("hidden");
+  projectTaskEditId=null;
+  renderAll();
+  toast("Task zapisany.");
+};
+
+$("#projectTaskDelete").onclick=async()=>{
+  if(!projectTaskEditId)return;
+  const t=state.tasks.find(x=>x.id===projectTaskEditId);
+  if(!t)return;
+  if(!confirm(`Usunąć task „${t.title}”?`))return;
+  const id=projectTaskEditId;
+  $("#projectTaskModal").classList.add("hidden");
+  projectTaskEditId=null;
+  await deleteTask(id);
+  if(activeProjectId) renderProjectWorkspace();
+};
+
+function projectTaskActions(t){
+  return `<div class="pm-task-actions">
+    ${!done(t)?`<button class="pm-icon-btn" data-pm-plan="${t.id}" title="${t.scheduledAt?"Edytuj timeblock":"Zaplanuj"}">◷</button>`:""}
+    <button class="pm-icon-btn" data-pm-edit="${t.id}" title="Edytuj task">✎</button>
+    ${!done(t)?`<button class="pm-icon-btn" data-pm-done="${t.id}" title="Ukończ">✓</button>`:""}
+    <button class="pm-icon-btn delete" data-pm-delete="${t.id}" title="Usuń">×</button>
+  </div>`;
+}
+
+function projectTaskRow(t){
   return `<div class="pm-task-row ${done(t)?"done":""}">
-    <span class="pm-priority">${t.priority}</span>
-    <div><strong>${esc(t.title)}</strong><small>${esc(customCategoryLabel(t.category))} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small></div>
+    <span class="pm-priority">${esc(t.priority)}</span>
+    <div>
+      <strong>${esc(t.title)}</strong>
+      <small>${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+    </div>
     <span class="badge">${done(t)?"Done":t.scheduledAt?"Planned":"Backlog"}</span>
-    <div class="pm-row-actions">
-      ${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Edytuj blok":"Zaplanuj"}</button><button class="btn ghost" data-pm-done="${t.id}">✓</button>`:""}
+    ${projectTaskActions(t)}
+  </div>`;
+}
+
+function wireProjectTaskActions(){
+  $$("[data-pm-plan]").forEach(b=>b.onclick=()=>openScheduleModal(b.dataset.pmPlan));
+  $$("[data-pm-edit]").forEach(b=>b.onclick=()=>openProjectTaskModal(b.dataset.pmEdit));
+  $$("[data-pm-done]").forEach(b=>b.onclick=()=>completeTask(b.dataset.pmDone));
+  $$("[data-pm-delete]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.pmDelete));
+  $$("[data-pm-add-empty]").forEach(b=>b.onclick=()=>openProjectTaskModal());
+}
+
+function kanbanCard(t){
+  return `<div class="kanban-card">
+    <strong>${esc(t.title)}</strong>
+    <small>${esc(t.priority)} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+    <div class="kanban-card-actions">
+      ${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Timeblock":"Zaplanuj"}</button>`:""}
+      <button class="btn ghost" data-pm-edit="${t.id}">Edytuj</button>
+      ${!done(t)?`<button class="btn ghost" data-pm-done="${t.id}">Done</button>`:""}
+      <button class="btn ghost" data-pm-delete="${t.id}">Usuń</button>
     </div>
   </div>`;
 }
-function wireProjectTaskActions(){
-  $$("[data-pm-plan]").forEach(b=>b.onclick=()=>openScheduleModal(b.dataset.pmPlan));
-  $$("[data-pm-done]").forEach(b=>b.onclick=()=>completeTask(b.dataset.pmDone));
+
+function projectEmpty(message="Brak tasków w tym projekcie."){
+  return `<div class="pm-empty"><strong>${esc(message)}</strong><span>Dodaj pierwszy task bez wychodzenia z projektu.</span><br><button class="btn primary" data-pm-add-empty>+ Dodaj task</button></div>`;
 }
+
 function renderProjectWorkspace(){
   if(!activeProjectId||!state.projects[activeProjectId])return;
-  const p=state.projects[activeProjectId],s=projectStats(activeProjectId);
+
+  const p=state.projects[activeProjectId];
+  const s=projectStats(activeProjectId);
+
   $("#projectWorkspaceTitle").textContent=p.label;
-  $("#projectWorkspaceMeta").textContent=`${p.status} · ${s.pct}% ukończone · ${s.tasks.length} tasków`;
+  $("#projectWorkspaceMeta").textContent=`${s.pct}% ukończone · ${s.backlog} backlog · ${s.planned} planned · ${s.doneCount} done`;
   $$("[data-project-tab]").forEach(x=>x.classList.toggle("active",x.dataset.projectTab===activeProjectTab));
+
   const root=$("#projectWorkspaceBody");
 
   if(activeProjectTab==="overview"){
-    const recent=[...s.tasks].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6);
-    root.innerHTML=`<div class="pm-overview-grid">
-      <div>
-        <div class="pm-stat-grid">
-          <div class="pm-stat"><span>Progress</span><strong>${s.pct}%</strong></div>
-          <div class="pm-stat"><span>Backlog</span><strong>${s.backlog}</strong></div>
-          <div class="pm-stat"><span>Planned</span><strong>${s.planned}</strong></div>
-          <div class="pm-stat"><span>Done</span><strong>${s.doneCount}</strong></div>
+    const open=s.tasks.filter(t=>!done(t));
+    const scheduled=[...open].filter(t=>t.scheduledAt).sort((a,b)=>new Date(a.scheduledAt)-new Date(b.scheduledAt));
+    const priority=[...open].sort((a,b)=>String(a.priority).localeCompare(String(b.priority))).slice(0,6);
+
+    root.innerHTML=`
+      <div class="pm-overview-grid">
+        <div>
+          <div class="pm-stat-grid">
+            <div class="pm-stat"><span>Progress</span><strong>${s.pct}%</strong></div>
+            <div class="pm-stat"><span>Backlog</span><strong>${s.backlog}</strong></div>
+            <div class="pm-stat"><span>Planned</span><strong>${s.planned}</strong></div>
+            <div class="pm-stat"><span>Done</span><strong>${s.doneCount}</strong></div>
+          </div>
+
+          <div class="panel pm-recent">
+            <div class="pm-toolbar">
+              <div class="pm-toolbar-copy"><h3>Priorytety projektu</h3><p>Najważniejsze otwarte taski.</p></div>
+              <button class="btn primary" data-pm-add-empty>+ Task</button>
+            </div>
+            <div class="pm-task-list">${priority.length?priority.map(projectTaskRow).join(""):projectEmpty()}</div>
+          </div>
         </div>
-        <div class="panel pm-recent"><div class="section-title"><div><h3>Ostatnie taski</h3><p>Najświeższa praca w projekcie.</p></div></div>
-          <div class="pm-task-list">${recent.length?recent.map(projectTaskCard).join(""):'<div class="pm-empty">Ten projekt nie ma jeszcze tasków.</div>'}</div>
+
+        <div>
+          <div class="panel">
+            <div class="pm-toolbar-copy"><h3>Najbliżej w kalendarzu</h3><p>Zaplanowana praca dla projektu.</p></div>
+            <div class="pm-task-list" style="margin-top:12px">
+              ${scheduled.length?scheduled.slice(0,5).map(projectTaskRow).join(""):'<div class="helper">Nic nie jest jeszcze zaplanowane.</div>'}
+            </div>
+          </div>
         </div>
-      </div>
-      <div>
-        <div class="pm-next"><span>NEXT ACTION</span><strong>${esc(p.nextAction||"Nie ustawiono następnego ruchu.")}</strong></div>
-        <div class="panel" style="margin-top:14px">
-          <div class="section-title"><div><h3>Status projektu</h3><p>${esc(p.status)}</p></div></div>
-          <div class="project-progress"><span style="width:${s.pct}%"></span></div>
-        </div>
-      </div>
-    </div>`;
-    wireProjectTaskActions();
+      </div>`;
   }
 
   if(activeProjectTab==="kanban"){
     const backlog=s.tasks.filter(t=>!done(t)&&!t.scheduledAt);
-    const planned=s.tasks.filter(t=>scheduled(t));
+    const planned=s.tasks.filter(t=>!done(t)&&!!t.scheduledAt);
     const completed=s.tasks.filter(done);
-    const col=(name,list,key)=>`<div class="kanban-col"><div class="kanban-head"><h3>${name}</h3><span class="kanban-count">${list.length}</span></div><div class="kanban-stack">${list.length?list.map(t=>`<div class="kanban-card"><strong>${esc(t.title)}</strong><small>${t.priority} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small><div class="kanban-card-actions">${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Przenieś":"Zaplanuj"}</button><button class="btn ghost" data-pm-done="${t.id}">Done</button>`:""}</div></div>`).join(""):'<div class="helper">Pusto</div>'}</div></div>`;
-    root.innerHTML=`<div class="kanban-board">${col("Backlog",backlog,"backlog")}${col("Planned",planned,"planned")}${col("Done",completed,"done")}</div>`;
-    wireProjectTaskActions();
+
+    const col=(title,list,cls)=>`
+      <div class="kanban-col">
+        <div class="kanban-head">
+          <div class="pm-board-label"><i class="pm-board-dot ${cls}"></i><h3>${title}</h3></div>
+          <span class="kanban-count">${list.length}</span>
+        </div>
+        <div class="kanban-stack">
+          ${list.length?list.map(kanbanCard).join(""):'<div class="helper">Pusto</div>'}
+        </div>
+      </div>`;
+
+    root.innerHTML=`
+      <div class="pm-toolbar">
+        <div class="pm-toolbar-copy"><h3>Board</h3><p>Backlog → zaplanowane → ukończone.</p></div>
+        <button class="btn primary" data-pm-add-empty>+ Dodaj task</button>
+      </div>
+      <div class="kanban-board">
+        ${col("Backlog",backlog,"")}
+        ${col("Planned",planned,"planned")}
+        ${col("Done",completed,"done")}
+      </div>`;
   }
 
   if(activeProjectTab==="list"){
-    const list=[...s.tasks].sort((a,b)=>done(a)-done(b)||String(a.priority).localeCompare(String(b.priority)));
-    root.innerHTML=`<div class="panel"><div class="pm-task-list">${list.length?list.map(projectTaskCard).join(""):'<div class="pm-empty">Brak tasków w tym projekcie.</div>'}</div></div>`;
-    wireProjectTaskActions();
+    const list=[...s.tasks].sort((a,b)=>{
+      if(done(a)!==done(b)) return done(a)?1:-1;
+      return String(a.priority).localeCompare(String(b.priority));
+    });
+
+    root.innerHTML=`
+      <div class="panel">
+        <div class="pm-toolbar">
+          <div class="pm-toolbar-copy"><h3>Wszystkie taski</h3><p>Edytuj, planuj, kończ lub usuwaj bez wychodzenia z projektu.</p></div>
+          <button class="btn primary" data-pm-add-empty>+ Dodaj task</button>
+        </div>
+        <div class="pm-task-list">${list.length?list.map(projectTaskRow).join(""):projectEmpty()}</div>
+      </div>`;
   }
 
   if(activeProjectTab==="timeline"){
     const list=s.tasks.filter(t=>t.scheduledAt).sort((a,b)=>new Date(a.scheduledAt)-new Date(b.scheduledAt));
-    root.innerHTML=`<div class="panel"><div class="pm-timeline">${list.length?list.map(t=>`<div class="pm-time-row"><div class="pm-time-date">${new Date(t.scheduledAt).toLocaleString("pl-PL",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div><div><strong>${esc(t.title)}</strong><small>${t.priority} · ${formatEstimate(taskBlockMinutes(t))}</small></div><div>${done(t)?"✓":`<button class="btn ghost" data-pm-plan="${t.id}">Edytuj blok</button>`}</div></div>`).join(""):'<div class="pm-empty">Brak zaplanowanych bloków dla tego projektu.</div>'}</div></div>`;
-    wireProjectTaskActions();
+
+    root.innerHTML=`
+      <div class="panel">
+        <div class="pm-toolbar">
+          <div class="pm-toolbar-copy"><h3>Timeline</h3><p>Wszystkie timeblocki tego projektu.</p></div>
+          <button class="btn primary" data-pm-add-empty>+ Dodaj task</button>
+        </div>
+        <div class="pm-timeline">
+          ${list.length?list.map(t=>`
+            <div class="pm-time-row">
+              <div class="pm-time-date">${new Date(t.scheduledAt).toLocaleString("pl-PL",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div>
+              <div><strong>${esc(t.title)}</strong><small>${esc(t.priority)} · ${formatEstimate(taskBlockMinutes(t))}</small></div>
+              ${projectTaskActions(t)}
+            </div>`).join(""):projectEmpty("Brak timeblocków dla tego projektu.")}
+        </div>
+      </div>`;
   }
+
+  wireProjectTaskActions();
 }
 
 function renderBody(){const b=body();$("#bodyEnergy").textContent=ensureDay().interview.energy;$("#bodyEnergyBar").style.width=(ensureDay().interview.energy*10)+"%";for(const [id,key] of [["bodySteps","steps"],["bodyWeight","weight"],["bodyWater","water"],["bodySleep","sleep"]]){$("#"+id).value=b[key]}$("#bodyWorkout").checked=!!b.workout}
