@@ -463,7 +463,7 @@ $("#taskNext").onclick=()=>{
   }
   if(taskStep<4){taskStep++;renderTaskStep();return}
   const finalCategory=draft.category==="other" ? `custom:${(draft.customCategory||"Inne").trim()}` : draft.category;
-  state.tasks.unshift({id:uuid(),title:draft.title,category:finalCategory,priority:draft.priority,estimateMinutes:draft.estimateMinutes,actualMinutes:null,scheduledAt:null,scheduledMinutes:null,completedAt:null,status:"unscheduled",createdAt:new Date().toISOString()});
+  state.tasks.unshift({id:uuid(),title:draft.title,category:finalCategory,priority:draft.priority,estimateMinutes:draft.estimateMinutes,actualMinutes:null,scheduledAt:null,scheduledMinutes:null,completedAt:null,status:"unscheduled",notes:"",dueDate:null,linkUrl:"",checklist:[],createdAt:new Date().toISOString()});
   save();$("#taskModal").classList.add("hidden");renderAll();toast("Zapisane jako niezaplanowane.");
 };
 function renderTaskStep(){
@@ -637,7 +637,7 @@ function completeTask(id){
 }
 
 /* render */
-function renderAll(){renderToday();renderTasks();renderWeek();renderMoney();renderProjects();renderBody();renderProof();renderReviews();renderIdeas();renderLogList("#todayLogs");renderLogList("#financeLogs","finance");renderLogList("#bodyLogs","body");renderLogList("#projectsLogs","projects");if(activeProjectId)renderProjectWorkspace()}
+function renderAll(){renderToday();renderTasks();renderWeek();renderMoney();renderProjects();renderBody();renderProof();renderReviews();renderIdeas();renderLogList("#todayLogs");renderLogList("#financeLogs","finance");renderLogList("#bodyLogs","body");renderLogList("#projectsLogs","projects");if(activeProjectId)renderProjectWorkspace();if(activeTaskDetailId)renderTaskDetail()}
 function renderToday(){
   const d=ensureDay();$("#todayDate").textContent=new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
   $("#modeStat").textContent=d.capacity.mode==="full"?"Pełny":d.capacity.mode==="survival"?"Minimalny":"Standardowy";
@@ -698,6 +698,7 @@ function renderToday(){
     };
     block.querySelector(".edit-block").onclick=e=>{e.stopPropagation();openScheduleModal(t.id)};
     block.querySelector(".complete-block").onclick=e=>{e.stopPropagation();completeTask(t.id)};
+    block.ondblclick=e=>{if(e.target.closest("button,.resize-handle"))return;e.stopPropagation();openTaskDetail(t.id)};
 
     const handle=block.querySelector(".resize-handle");
     handle.onpointerdown=e=>{
@@ -735,7 +736,7 @@ function renderToday(){
   if(!list.length)uns.innerHTML='<div class="helper">Brak niezaplanowanych zadań.</div>';
   for(const t of list){
     const el=document.createElement("div");
-    el.className="unscheduled";el.draggable=true;
+    el.className="unscheduled task-clickable";el.draggable=true;el.dataset.taskOpen=t.id;
     el.innerHTML=`<strong>${esc(t.title)}</strong>
       <small>${esc(customCategoryLabel(t.category))} · ${t.priority} · ${formatEstimate(t.estimateMinutes)}</small>
       <span class="badge">Niezaplanowane</span>
@@ -746,6 +747,7 @@ function renderToday(){
     el.ondragstart=e=>{if(e.target.closest("button")){e.preventDefault();return}e.dataTransfer.setData("text/plain",t.id)};
     el.querySelector(".plan-task").onclick=()=>openScheduleModal(t.id);
     el.querySelector(".finish-task").onclick=()=>completeTask(t.id);
+    el.onclick=e=>{if(e.target.closest("button"))return;openTaskDetail(t.id)};
     uns.appendChild(el);
   }
   $("#moneyMove").value=d.moneyMove||"";$("#moneyMove").oninput=e=>{$("#moneyMoveFinance").value=e.target.value};
@@ -833,8 +835,8 @@ function renderTasks(){
          <button class="btn ghost" data-plan="${t.id}">${t.scheduledAt?"Edytuj blok":"Zaplanuj"}</button>
          ${t.scheduledAt?`<button class="btn ghost" data-unschedule="${t.id}">Odplanuj</button>`:""}
          <button class="btn ghost" data-delete="${t.id}">Usuń</button>`;
-    return `<div class="task-row ${done(t)?"completed-row":""}">
-      <div><strong>${esc(t.title)}</strong><br><span>${esc(customCategoryLabel(t.category))}</span></div>
+    return `<div class="task-row task-clickable ${done(t)?"completed-row":""}" data-task-open="${t.id}">
+      <div><strong>${esc(t.title)}</strong><br><span>${esc(customCategoryLabel(t.category))}</span>${checklistMini(t)}</div>
       <span>${t.priority}</span>
       <span>${formatEstimate(t.estimateMinutes)}</span>
       <span>${block}</span>
@@ -846,6 +848,7 @@ function renderTasks(){
   $$("[data-plan]").forEach(b=>b.onclick=()=>openScheduleModal(b.dataset.plan));
   $$("[data-unschedule]").forEach(b=>b.onclick=()=>unscheduleTask(b.dataset.unschedule));
   $$("[data-delete]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.delete));
+  wireTaskDetailOpeners($("#tasksTable"));
 }
 $("#statusFilter").onchange=renderTasks;$("#categoryFilter").onchange=renderTasks;
 
@@ -867,6 +870,208 @@ $("#saveFinance").onclick=()=>{
     {...f});
   save();renderAll();toast("Finanse zapisane.");
 };
+
+
+
+/* TASK DETAIL WORKSPACE */
+let activeTaskDetailId=null;
+
+function taskChecklist(task){
+  if(!Array.isArray(task.checklist)) task.checklist=[];
+  return task.checklist;
+}
+function checklistStats(task){
+  const list=taskChecklist(task);
+  const doneCount=list.filter(x=>x.done).length;
+  return {total:list.length,done:doneCount,pct:list.length?Math.round(doneCount/list.length*100):0};
+}
+function checklistMini(task){
+  const s=checklistStats(task);
+  if(!s.total)return "";
+  return `<div class="task-checklist-mini"><span>${s.done}/${s.total}</span><div class="task-checklist-mini-bar"><span style="width:${s.pct}%"></span></div><span>${s.pct}%</span></div>`;
+}
+
+function openTaskDetail(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  activeTaskDetailId=id;
+  $("#taskDetailModal").classList.remove("hidden");
+  renderTaskDetail();
+}
+
+function closeTaskDetail(){
+  $("#taskDetailModal").classList.add("hidden");
+  activeTaskDetailId=null;
+}
+
+$("#taskDetailClose").onclick=closeTaskDetail;
+$("#taskDetailModal").onclick=e=>{
+  if(e.target.id==="taskDetailModal")closeTaskDetail();
+};
+
+function renderTaskDetail(){
+  const t=state.tasks.find(x=>x.id===activeTaskDetailId);
+  if(!t){closeTaskDetail();return}
+
+  $("#taskDetailTitle").value=t.title||"";
+  $("#taskDetailPriority").value=t.priority||"P2";
+  $("#taskDetailDueDate").value=t.dueDate||"";
+  $("#taskDetailNotes").value=t.notes||"";
+  $("#taskDetailLink").value=t.linkUrl||"";
+
+  const mins=t.estimateMinutes;
+  if(mins==null){
+    $("#taskDetailEstimate").value="";
+    $("#taskDetailEstimateUnit").value="minutes";
+  }else if(mins>=60 && mins%30===0){
+    $("#taskDetailEstimate").value=mins/60;
+    $("#taskDetailEstimateUnit").value="hours";
+  }else{
+    $("#taskDetailEstimate").value=mins;
+    $("#taskDetailEstimateUnit").value="minutes";
+  }
+
+  const parts=[];
+  parts.push(`<span class="task-detail-meta-chip">${esc(customCategoryLabel(t.category))}</span>`);
+  parts.push(`<span class="task-detail-meta-chip">${esc(t.priority)}</span>`);
+  parts.push(`<span class="task-detail-meta-chip">${done(t)?"Done":t.scheduledAt?"Planned":"Backlog"}</span>`);
+  if(t.scheduledAt) parts.push(`<span class="task-detail-meta-chip">${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</span>`);
+  $("#taskDetailMeta").innerHTML=parts.join("");
+
+  $("#taskDetailComplete").classList.toggle("hidden",done(t));
+  $("#taskDetailSchedule").textContent=t.scheduledAt?"Edytuj timeblock":"Zaplanuj";
+
+  const link=(t.linkUrl||"").trim();
+  $("#taskDetailLinkOpenWrap").classList.toggle("hidden",!link);
+  if(link) $("#taskDetailLinkOpen").href=link;
+
+  renderTaskChecklist();
+}
+
+function renderTaskChecklist(){
+  const t=state.tasks.find(x=>x.id===activeTaskDetailId); if(!t)return;
+  const list=taskChecklist(t), s=checklistStats(t);
+
+  $("#taskChecklistProgressLabel").textContent=`${s.done} / ${s.total} ukończone`;
+  $("#taskChecklistPercent").textContent=`${s.pct}%`;
+  $("#taskChecklistProgressBar").style.width=`${s.pct}%`;
+
+  const root=$("#taskChecklistList");
+  if(!list.length){
+    root.innerHTML='<div class="helper" style="padding:12px 0">Brak kroków. Rozbij task na mniejsze rzeczy do odhaczenia.</div>';
+    return;
+  }
+
+  root.innerHTML=list.map((item,i)=>`
+    <div class="task-check-item ${item.done?"done":""}" data-check-id="${item.id}">
+      <input class="task-check-box" type="checkbox" ${item.done?"checked":""} data-check-toggle="${item.id}">
+      <input class="task-check-text" value="${esc(item.text||"")}" data-check-text="${item.id}">
+      <div class="task-check-actions">
+        <button data-check-up="${item.id}" title="W górę" ${i===0?"disabled":""}>↑</button>
+        <button data-check-down="${item.id}" title="W dół" ${i===list.length-1?"disabled":""}>↓</button>
+        <button class="delete" data-check-delete="${item.id}" title="Usuń">×</button>
+      </div>
+    </div>`).join("");
+
+  $$("[data-check-toggle]").forEach(el=>el.onchange=()=>{
+    const item=list.find(x=>x.id===el.dataset.checkToggle); if(!item)return;
+    item.done=el.checked;
+    save();renderTaskChecklist();renderAll();
+  });
+
+  $$("[data-check-text]").forEach(el=>el.onchange=()=>{
+    const item=list.find(x=>x.id===el.dataset.checkText); if(!item)return;
+    item.text=el.value.trim()||item.text;
+    save();renderTaskChecklist();renderAll();
+  });
+
+  $$("[data-check-delete]").forEach(el=>el.onclick=()=>{
+    const index=list.findIndex(x=>x.id===el.dataset.checkDelete); if(index<0)return;
+    list.splice(index,1);
+    save();renderTaskChecklist();renderAll();
+  });
+
+  $$("[data-check-up]").forEach(el=>el.onclick=()=>{
+    const i=list.findIndex(x=>x.id===el.dataset.checkUp); if(i<=0)return;
+    [list[i-1],list[i]]=[list[i],list[i-1]];
+    save();renderTaskChecklist();
+  });
+
+  $$("[data-check-down]").forEach(el=>el.onclick=()=>{
+    const i=list.findIndex(x=>x.id===el.dataset.checkDown); if(i<0||i>=list.length-1)return;
+    [list[i],list[i+1]]=[list[i+1],list[i]];
+    save();renderTaskChecklist();
+  });
+}
+
+function addChecklistItem(){
+  const t=state.tasks.find(x=>x.id===activeTaskDetailId); if(!t)return;
+  const input=$("#taskChecklistNew");
+  const text=input.value.trim(); if(!text)return;
+  taskChecklist(t).push({id:uuid(),text,done:false});
+  input.value="";
+  save();renderTaskChecklist();renderAll();
+  setTimeout(()=>input.focus(),10);
+}
+$("#taskChecklistAdd").onclick=addChecklistItem;
+$("#taskChecklistNew").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();addChecklistItem()}};
+
+$("#taskDetailSave").onclick=()=>{
+  const t=state.tasks.find(x=>x.id===activeTaskDetailId); if(!t)return;
+
+  const title=$("#taskDetailTitle").value.trim();
+  if(!title){toast("Task musi mieć nazwę.");return}
+
+  const raw=$("#taskDetailEstimate").value.trim();
+  let estimateMinutes=null;
+  if(raw!==""){
+    const n=Number(raw);
+    if(!Number.isFinite(n)||n<=0){toast("Estymacja musi być większa od zera albo pusta.");return}
+    estimateMinutes=$("#taskDetailEstimateUnit").value==="hours"?Math.round(n*60):Math.round(n);
+  }
+
+  t.title=title;
+  t.priority=$("#taskDetailPriority").value;
+  t.estimateMinutes=estimateMinutes;
+  t.dueDate=$("#taskDetailDueDate").value||null;
+  t.notes=$("#taskDetailNotes").value.trim();
+  t.linkUrl=$("#taskDetailLink").value.trim();
+
+  save();
+  renderAll();
+  renderTaskDetail();
+  toast("Task zapisany.");
+};
+
+$("#taskDetailSchedule").onclick=()=>{
+  const id=activeTaskDetailId;
+  if(!id)return;
+  openScheduleModal(id);
+};
+
+$("#taskDetailComplete").onclick=()=>{
+  const id=activeTaskDetailId;
+  if(!id)return;
+  completeTask(id);
+  renderTaskDetail();
+};
+
+$("#taskDetailDelete").onclick=async()=>{
+  const t=state.tasks.find(x=>x.id===activeTaskDetailId); if(!t)return;
+  if(!confirm(`Usunąć task „${t.title}”?`))return;
+  const id=t.id;
+  closeTaskDetail();
+  await deleteTask(id);
+};
+
+/* Clickable task helpers */
+function wireTaskDetailOpeners(root=document){
+  root.querySelectorAll("[data-task-open]").forEach(el=>{
+    el.onclick=e=>{
+      if(e.target.closest("button,input,select,a,textarea"))return;
+      openTaskDetail(el.dataset.taskOpen);
+    };
+  });
+}
 
 
 
@@ -1008,6 +1213,10 @@ $("#projectTaskSave").onclick=()=>{
       scheduledMinutes:null,
       completedAt:null,
       status:"unscheduled",
+      notes:"",
+      dueDate:null,
+      linkUrl:"",
+      checklist:[],
       createdAt:new Date().toISOString()
     });
   }
@@ -1041,11 +1250,12 @@ function projectTaskActions(t){
 }
 
 function projectTaskRow(t){
-  return `<div class="pm-task-row ${done(t)?"done":""}">
+  return `<div class="pm-task-row task-clickable ${done(t)?"done":""}" data-task-open="${t.id}">
     <span class="pm-priority">${esc(t.priority)}</span>
     <div>
       <strong>${esc(t.title)}</strong>
-      <small>${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+      <small>${formatEstimate(t.estimateMinutes)}${t.dueDate?` · deadline ${new Date(t.dueDate+"T12:00:00").toLocaleDateString("pl-PL",{day:"2-digit",month:"short"})}`:""}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+      ${checklistMini(t)}
     </div>
     <span class="badge">${done(t)?"Done":t.scheduledAt?"Planned":"Backlog"}</span>
     ${projectTaskActions(t)}
@@ -1061,9 +1271,10 @@ function wireProjectTaskActions(){
 }
 
 function kanbanCard(t){
-  return `<div class="kanban-card">
+  return `<div class="kanban-card task-clickable" data-task-open="${t.id}">
     <strong>${esc(t.title)}</strong>
-    <small>${esc(t.priority)} · ${formatEstimate(t.estimateMinutes)}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+    <small>${esc(t.priority)} · ${formatEstimate(t.estimateMinutes)}${t.dueDate?` · deadline ${new Date(t.dueDate+"T12:00:00").toLocaleDateString("pl-PL",{day:"2-digit",month:"short"})}`:""}${t.scheduledAt?` · ${new Date(t.scheduledAt).toLocaleString("pl-PL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`:""}</small>
+    ${checklistMini(t)}
     <div class="kanban-card-actions">
       ${!done(t)?`<button class="btn ghost" data-pm-plan="${t.id}">${t.scheduledAt?"Timeblock":"Zaplanuj"}</button>`:""}
       <button class="btn ghost" data-pm-edit="${t.id}">Edytuj</button>
@@ -1189,6 +1400,7 @@ function renderProjectWorkspace(){
   }
 
   wireProjectTaskActions();
+  wireTaskDetailOpeners(root);
 }
 
 function renderBody(){const b=body();$("#bodyEnergy").textContent=ensureDay().interview.energy;$("#bodyEnergyBar").style.width=(ensureDay().interview.energy*10)+"%";for(const [id,key] of [["bodySteps","steps"],["bodyWeight","weight"],["bodyWater","water"],["bodySleep","sleep"]]){$("#"+id).value=b[key]}$("#bodyWorkout").checked=!!b.workout}
