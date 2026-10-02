@@ -79,7 +79,14 @@ export async function hydrateCloud(uid) {
     top3:[r.top1||"",r.top2||"",r.top3||""],moneyMove:r.money_move||"",
     minimums:{eat:!!r.ate,water:!!r.drank_water,movement:!!r.moved,moneyAction:!!r.money_action}
   };
-  state.tasks=(tasks.data||[]).map(r=>({id:r.id,title:r.title,category:r.category,priority:r.priority,estimateMinutes:r.estimate_minutes,actualMinutes:r.actual_minutes,scheduledAt:r.scheduled_at,scheduledMinutes:r.scheduled_minutes,completedAt:r.completed_at,status:r.status,createdAt:r.created_at}));
+  state.tasks=(tasks.data||[]).map(r=>({
+    id:r.id,title:r.title,category:r.category,priority:r.priority,
+    estimateMinutes:r.estimate_minutes,actualMinutes:r.actual_minutes,
+    scheduledAt:r.scheduled_at,scheduledMinutes:r.scheduled_minutes,
+    completedAt:r.completed_at,status:r.status,createdAt:r.created_at,
+    notes:r.notes||"",dueDate:r.due_date||null,linkUrl:r.link_url||"",
+    checklist:Array.isArray(r.checklist)?r.checklist:[]
+  }));
   for(const r of projects.data||[]) state.projects[r.id]={label:r.label,status:r.status,nextAction:r.next_action||""};
   state.ideas=(ideas.data||[]).map(r=>({id:r.id,title:r.title,category:r.category,status:r.status,createdAt:r.created_at}));
   state.proof=(proof.data||[]).map(r=>({id:r.id,date:r.day,text:r.text,source:r.source,createdAt:r.created_at}));
@@ -147,6 +154,8 @@ export async function syncCloud(uid,state,{force=false}={}) {
       id:t.id,user_id:uid,title:t.title,category:t.category,priority:t.priority,
       estimate_minutes:t.estimateMinutes ?? null,actual_minutes:t.actualMinutes ?? null,
       scheduled_at:t.scheduledAt||null,scheduled_minutes:t.scheduledMinutes ?? null,completed_at:t.completedAt||null,status:t.status,
+      notes:t.notes||null,due_date:t.dueDate||null,link_url:t.linkUrl||null,
+      checklist:Array.isArray(t.checklist)?t.checklist:[],
       created_at:t.createdAt||now,updated_at:now
     })),{onConflict:"id"}));
   }
