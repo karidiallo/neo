@@ -346,6 +346,107 @@
   </div>
 
 
+
+  <div id="taskDetailModal" class="modal hidden task-detail-modal">
+    <div class="task-detail-shell">
+      <div class="task-detail-head">
+        <div class="task-detail-title-wrap">
+          <div class="eyebrow">TASK WORKSPACE</div>
+          <input id="taskDetailTitle" class="task-detail-title" placeholder="Nazwa taska">
+          <div id="taskDetailMeta" class="helper"></div>
+        </div>
+        <div class="task-detail-top-actions">
+          <button id="taskDetailSchedule" class="btn ghost">Zaplanuj</button>
+          <button id="taskDetailComplete" class="btn primary">✓ Ukończ</button>
+          <button id="taskDetailClose" class="btn ghost">Zamknij</button>
+        </div>
+      </div>
+
+      <div class="task-detail-grid">
+        <div class="task-detail-main">
+          <section class="panel task-detail-section">
+            <div class="section-title">
+              <div>
+                <h3>Checklist / subtasks</h3>
+                <p id="taskChecklistProgressLabel">0 / 0 ukończone</p>
+              </div>
+              <strong id="taskChecklistPercent">0%</strong>
+            </div>
+
+            <div class="task-checklist-progress">
+              <span id="taskChecklistProgressBar"></span>
+            </div>
+
+            <div id="taskChecklistList" class="task-checklist-list"></div>
+
+            <div class="task-checklist-add">
+              <input id="taskChecklistNew" placeholder="Dodaj krok, np. poprawić hero mobile">
+              <button id="taskChecklistAdd" class="btn primary">+ Dodaj</button>
+            </div>
+          </section>
+
+          <section class="panel task-detail-section">
+            <div class="section-title">
+              <div>
+                <h3>Notatki</h3>
+                <p>Kontekst, decyzje, Definition of Done, rzeczy do pamiętania.</p>
+              </div>
+            </div>
+            <textarea id="taskDetailNotes" class="task-detail-notes" placeholder="Dodaj notatki do taska…"></textarea>
+          </section>
+        </div>
+
+        <aside class="task-detail-side">
+          <section class="panel task-detail-section">
+            <div class="section-title"><div><h3>Szczegóły</h3></div></div>
+
+            <label>Priorytet
+              <select id="taskDetailPriority">
+                <option value="P1">P1 · Krytyczne</option>
+                <option value="P2">P2 · Ważne</option>
+                <option value="P3">P3 · Dodatkowe</option>
+              </select>
+            </label>
+
+            <label>Estymacja
+              <div class="duration-custom">
+                <input id="taskDetailEstimate" type="number" min="0" step="5" placeholder="np. 90">
+                <select id="taskDetailEstimateUnit">
+                  <option value="minutes">minuty</option>
+                  <option value="hours">godziny</option>
+                </select>
+              </div>
+              <small class="helper">Puste = czas nieokreślony.</small>
+            </label>
+
+            <label>Deadline
+              <input id="taskDetailDueDate" type="date">
+            </label>
+
+            <label>Link / URL
+              <input id="taskDetailLink" type="url" placeholder="https://…">
+            </label>
+
+            <div id="taskDetailLinkOpenWrap" class="hidden">
+              <a id="taskDetailLinkOpen" class="btn ghost task-link-open" target="_blank" rel="noopener noreferrer">Otwórz link ↗</a>
+            </div>
+          </section>
+
+          <section class="panel task-detail-section task-detail-danger">
+            <div class="section-title">
+              <div>
+                <h3>Task</h3>
+                <p>Zmiany zapisują się przyciskiem poniżej.</p>
+              </div>
+            </div>
+            <button id="taskDetailSave" class="btn primary full">Zapisz zmiany</button>
+            <button id="taskDetailDelete" class="btn danger full">Usuń task</button>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </div>
+
   <div id="projectTaskModal" class="modal hidden">
     <div class="modal-card compact-modal">
       <div class="eyebrow" id="projectTaskEyebrow">TASK W PROJEKCIE</div>
