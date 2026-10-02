@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal OS</title>
+  <meta name="theme-color" content="#f3efe7" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="bootGate" class="overlay boot-gate">
+    <div class="boot-mark">
+      <div class="eyebrow">PERSONAL OS</div>
+      <strong>Ładowanie systemu…</strong>
+    </div>
+  </div>
+
+  <div id="authGate" class="overlay hidden">
+    <div class="auth-card">
+      <div class="eyebrow">PERSONAL OS · PRYWATNE KONTO</div>
+
+      <div id="authFirstStep" class="auth-state hidden">
+        <h1>Zaloguj się</h1>
+        <p>Wpisz email. Za pierwszym razem wyślemy Ci jednorazowy link, po którym ustawisz własne hasło.</p>
+        <input id="firstEmail" type="email" placeholder="twój@email.pl" autocomplete="email" />
+        <button id="firstEmailButton" class="btn primary">Wyślij link</button>
+        <button id="alreadyPasswordButton" class="btn text-btn auth-switch" type="button">Mam już ustawione hasło</button>
+        <div id="firstEmailMessage" class="helper"></div>
+      </div>
+
+      <div id="authCheckEmail" class="auth-state hidden">
+        <h1>Sprawdź mail</h1>
+        <p>Wysłałam jednorazowy link logowania. Kliknij go i wrócisz tutaj prosto do ustawienia hasła.</p>
+        <div class="email-sent-box">
+          <span>Link wysłany na</span>
+          <strong id="sentEmailLabel">—</strong>
+        </div>
+        <button id="changeEmailButton" class="btn ghost" type="button">Użyj innego emaila</button>
+        <div id="checkEmailMessage" class="helper"></div>
+      </div>
+
+      <div id="authPasswordStep" class="auth-state hidden">
+        <h1>Zaloguj się</h1>
+        <p>Wpisz email i swoje hasło.</p>
+        <input id="loginEmail" type="email" placeholder="twój@email.pl" autocomplete="email" />
+        <input id="loginPassword" type="password" placeholder="Hasło" autocomplete="current-password" />
+        <button id="loginPasswordButton" class="btn primary">Zaloguj się</button>
+        <div class="auth-secondary">
+          <button id="forgotPasswordButton" class="btn text-btn" type="button">Nie pamiętam hasła</button>
+          <button id="useMagicInsteadButton" class="btn text-btn" type="button">Zaloguj linkiem</button>
+        </div>
+        <div id="loginMessage" class="helper"></div>
+      </div>
+
+      <div id="authSetPassword" class="auth-state hidden">
+        <h1>Ustaw hasło</h1>
+        <p>To ostatni krok. Od kolejnego logowania wystarczy email i to hasło.</p>
+        <input id="setupPassword" type="password" placeholder="Nowe hasło" autocomplete="new-password" />
+        <input id="setupPassword2" type="password" placeholder="Powtórz hasło" autocomplete="new-password" />
+        <button id="setupPasswordButton" class="btn primary">Zapisz hasło</button>
+        <div id="setupPasswordMessage" class="helper"></div>
+      </div>
+
+      <div id="authResetSent" class="auth-state hidden">
+        <h1>Sprawdź mail</h1>
+        <p>Wysłałam link do ustawienia nowego hasła. Po kliknięciu wrócisz tutaj do formularza zmiany hasła.</p>
+        <button id="backToPasswordLogin" class="btn ghost" type="button">Wróć do logowania</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="morningGate" class="overlay hidden">
+    <div class="gate-card">
+      <div class="eyebrow">PORANNY BRIEFING</div>
+      <div id="briefingQuestion"></div>
+      <div class="gate-actions">
+        <button id="briefingBack" class="btn ghost">Wstecz</button>
+        <div id="briefingProgress" class="step-progress"></div>
+        <button id="briefingNext" class="btn primary">Dalej</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span>PERSONAL OS</span>
+        <strong>Command Center</strong>
+      </div>
+
+      <div class="nav-group">
+        <small>DZIEŃ</small>
+        <button class="nav active" data-view="today">Dzisiaj</button>
+        <button class="nav" data-view="calendar">Kalendarz</button>
+        <button class="nav" data-view="tasks">Zadania</button>
+      </div>
+
+      <div class="nav-group">
+        <small>SYSTEMY</small>
+        <button class="nav" data-view="money">Finanse / BFI</button>
+        <button class="nav" data-view="projects">Projekty</button>
+        <button class="nav" data-view="body">Ciało</button>
+        <button class="nav" data-view="proof">Dowody</button>
+      </div>
+
+      <div class="nav-group">
+        <small>REFLEKSJA</small>
+        <button class="nav" data-view="reviews">Przeglądy</button>
+        <button class="nav" data-view="ideas">Schowek pomysłów</button>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="accountButton" class="account-link" type="button">Konto / hasło</button>
+        <div id="syncStatus">Chmura: łączenie…</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="view-today" class="view active">
+        <header class="page-head">
+          <div>
+            <div id="todayDate" class="eyebrow"></div>
+            <h1>Dzisiejszy plan</h1>
+            <p>Najpierw realne zasoby. Potem właściwe decyzje. Na końcu konkretny plan.</p>
+          </div>
+          <div class="status-row">
+            <div class="mini-stat"><span>Tryb</span><strong id="modeStat">—</strong></div>
+            <div class="mini-stat"><span>Pojemność</span><strong id="capacityStat">—</strong></div>
+            <div class="mini-stat"><span>Seria</span><strong><b id="streakStat">0</b> dni</strong></div>
+          </div>
+        </header>
+
+        <section class="hero panel">
+          <div class="hero-content">
+            <div class="eyebrow hero-eyebrow">DZISIEJSZY TRYB</div>
+            <h2 id="capacityTitle">Dzisiaj robimy dzień standardowy.</h2>
+            <p id="capacityCopy"></p>
+            <div id="capacityMeta" class="chips"></div>
+
+            <div class="level-card">
+              <div class="level-top">
+                <div>
+                  <span class="level-kicker">EXECUTION LEVEL</span>
+                  <strong id="levelName">Level 1</strong>
+                </div>
+                <div class="level-benchmark">
+                  <span>Finansowy benchmark</span>
+                  <strong id="levelFinance">0–500 zł</strong>
+                </div>
+              </div>
+              <div class="level-track"><i id="levelBar"></i></div>
+              <div class="level-bottom">
+                <span id="levelXp">0 / 100 XP</span>
+                <span id="actualCash">Realne cash: 0 zł</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-actions hero-actions-stack">
+            <button id="changeCapacity" class="btn ghost">Zmień tempo dnia</button>
+            <button id="addTaskHero" class="btn primary">Dodaj zadanie</button>
+          </div>
+        </section>
+
+        <div class="section-title">
+          <div>
+            <h3>3 wyniki dnia</h3>
+            <p>Trzy rezultaty, po których dzień ma sens.</p>
+          </div>
+          <button id="saveTop3" class="btn ghost">Zapisz wyniki</button>
+        </div>
+        <div id="top3Grid" class="top3-grid"></div>
+
+        <div class="section-title">
+          <div>
+            <h3>Plan dnia</h3>
+            <p>Zadanie staje się realnym planem dopiero po przypisaniu czasu.</p>
+          </div>
+          <button id="clearToday" class="btn ghost">Wyczyść bloki</button>
+        </div>
+
+        <div class="today-layout">
+          <div class="panel calendar-panel">
+            <div class="panel-head"><strong>Dzisiaj</strong><span>Przeciągaj · przesuwaj · rozciągaj</span></div>
+            <div id="todayCalendar"></div>
+          </div>
+
+          <div class="right-stack">
+            <div class="panel side-card">
+              <div class="side-card-head">
+                <h3>Niezaplanowane</h3>
+                <button id="addTaskSide" class="btn small">+ Dodaj</button>
+              </div>
+              <div id="unscheduledList"></div>
+            </div>
+
+            <div class="panel side-card">
+              <div class="side-card-head"><h3>Ruch finansowy</h3><button id="saveMoneyMove" class="btn small">Zapisz</button></div>
+              <input id="moneyMove" class="clean-input" placeholder="Co dziś może przesunąć pieniądze?" />
+            </div>
+
+            <div class="panel side-card">
+              <div class="side-card-head"><h3>Podstawy dnia</h3><button id="saveMinimums" class="btn small">Zapisz</button></div>
+              <div class="checks">
+                <label><input type="checkbox" data-min="eat"> jedzenie</label>
+                <label><input type="checkbox" data-min="water"> woda</label>
+                <label><input type="checkbox" data-min="movement"> ruch</label>
+                <label><input type="checkbox" data-min="moneyAction"> ruch finansowy</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title log-section-title">
+          <div><h3>Dziennik dnia</h3><p>Historia zmian i zapisów z dzisiaj.</p></div>
+        </div>
+        <div id="todayLogs" class="panel log-list"></div>
+      </section>
+
+      <section id="view-calendar" class="view">
+        <header class="simple-head"><div><div class="eyebrow">KALENDARZ</div><h1>Tydzień</h1></div></header>
+        <div class="panel week-panel"><div id="weekGrid" class="week-grid"></div></div>
+      </section>
+
+      <section id="view-tasks" class="view">
+        <header class="simple-head">
+          <div><div class="eyebrow">ZADANIA</div><h1>Wszystkie zadania</h1></div>
+          <button id="addTaskTasks" class="btn primary">Dodaj zadanie</button>
+        </header>
+        <div class="metrics">
+          <div><span>Niezaplanowane</span><strong id="unscheduledCount">0</strong></div>
+          <div><span>Zaplanowane</span><strong id="scheduledCount">0</strong></div>
+          <div><span>P1 otwarte</span><strong id="p1Count">0</strong></div>
+          <div><span>Ukończone</span><strong id="doneCount">0</strong></div>
+        </div>
+        <div class="panel">
+          <div class="filters">
+            <select id="statusFilter">
+              <option value="open">Otwarte</option>
+              <option value="unscheduled">Niezaplanowane</option>
+              <option value="scheduled">Zaplanowane</option>
+              <option value="done">Ukończone</option>
+              <option value="all">Wszystkie</option>
+            </select>
+            <select id="categoryFilter"></select>
+          </div>
+          <div id="tasksTable"></div>
+        </div>
+      </section>
+
+      <section id="view-money" class="view">
+        <header class="simple-head"><div><div class="eyebrow">FINANSE / BFI</div><h1>Pieniądze</h1></div></header>
+        <div class="section-save-row"><button id="saveFinance" class="btn primary">Zapisz finanse</button></div>
+        <div id="financeGrid" class="finance-grid"></div>
+        <div class="panel money-panel">
+          <div class="side-card-head"><h3>Ruch finansowy dnia</h3><button id="saveMoneyMoveFinance" class="btn small">Zapisz</button></div>
+          <input id="moneyMoveFinance" class="clean-input" placeholder="Jedna konkretna akcja przychodowa…" />
+        </div>
+        <div class="section-title log-section-title"><div><h3>Log finansów</h3><p>Dzisiejsze zapisane stany.</p></div></div>
+        <div id="financeLogs" class="panel log-list"></div>
+      </section>
+
+      <section id="view-projects" class="view">
+        <header class="simple-head"><div><div class="eyebrow">PROJEKTY</div><h1>Aktywne obszary</h1></div></header>
+        <div id="projectsGrid" class="cards-grid"></div>
+        <div class="section-title log-section-title"><div><h3>Log projektów</h3><p>Dzisiejsze zapisane zmiany.</p></div></div>
+        <div id="projectsLogs" class="panel log-list"></div>
+      </section>
+
+      <section id="view-body" class="view">
+        <header class="simple-head"><div><div class="eyebrow">CIAŁO</div><h1>Podtrzymanie systemu</h1></div></header>
+        <div class="section-save-row"><button id="saveBody" class="btn primary">Zapisz stan ciała</button></div>
+        <div class="body-grid">
+          <div class="panel energy-panel"><span>Energia z porannego briefingu</span><strong id="bodyEnergy">5</strong><div class="level-track"><i id="bodyEnergyBar"></i></div></div>
+          <div class="panel body-form">
+            <label>Kroki<input id="bodySteps" type="number"></label>
+            <label>Waga<input id="bodyWeight" type="number" step="0.1"></label>
+            <label>Woda<input id="bodyWater" type="number" step="0.1"></label>
+            <label>Sen<input id="bodySleep" type="number" step="0.1"></label>
+            <label class="workout"><input id="bodyWorkout" type="checkbox"> trening / ruch</label>
+          </div>
+        </div>
+        <div class="section-title log-section-title"><div><h3>Log ciała</h3><p>Dzisiejsze zapisane pomiary i aktywności.</p></div></div>
+        <div id="bodyLogs" class="panel log-list"></div>
+      </section>
+
+      <section id="view-proof" class="view">
+        <header class="simple-head"><div><div class="eyebrow">DOWODY</div><h1>Co dowiozłaś</h1></div></header>
+        <div class="metrics">
+          <div><span>Wszystkie</span><strong id="proofCount">0</strong></div>
+          <div><span>Ten miesiąc</span><strong id="proofMonthCount">0</strong></div>
+          <div><span>Taski ukończone</span><strong id="proofTasksCount">0</strong></div>
+          <div><span>Level</span><strong id="proofLevel">1</strong></div>
+        </div>
+        <div class="panel add-inline"><input id="proofInput" placeholder="Co dziś udowodniłaś?"><button id="addProof" class="btn primary">Dodaj</button></div>
+        <div id="proofGrid" class="cards-grid"></div>
+      </section>
+
+      <section id="view-reviews" class="view">
+        <header class="simple-head">
+          <div><div class="eyebrow">PRZEGLĄDY</div><h1>Wnioski z działania</h1></div>
+          <button id="addReview" class="btn primary">Wieczorny przegląd</button>
+        </header>
+        <div id="reviewsGrid" class="cards-grid"></div>
+      </section>
+
+      <section id="view-ideas" class="view">
+        <header class="simple-head"><div><div class="eyebrow">SCHOWEK POMYSŁÓW</div><h1>Pomysł nie jest projektem</h1></div></header>
+        <form id="ideaForm" class="panel idea-form">
+          <input id="ideaTitle" placeholder="Nowy pomysł…" required>
+          <select id="ideaCategory"><option>Biznes</option><option>Aplikacja / SaaS</option><option>Muzyka</option><option>Życie</option><option>Content</option><option>Inne</option></select>
+          <button class="btn primary">Zapisz</button>
+        </form>
+        <div id="ideasGrid" class="cards-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="taskModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="eyebrow">NOWE ZADANIE</div>
+      <h2>Zapisz to, zanim wyleci z głowy.</h2>
+      <div id="taskStep"></div>
+      <div class="modal-actions">
+        <button id="taskBack" class="btn ghost">Wstecz</button>
+        <button id="taskCancel" class="btn ghost">Anuluj</button>
+        <button id="taskNext" class="btn primary">Dalej</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="scheduleModal" class="modal hidden">
+    <div class="modal-card compact-modal">
+      <div class="eyebrow">TIMEBLOCK</div>
+      <h2 id="scheduleTaskTitle">Zaplanuj zadanie</h2>
+      <p class="helper">Możesz ustawić dokładny start i dowolną długość bloku. To nie zmienia estymacji taska.</p>
+
+      <div class="schedule-form">
+        <label>Data
+          <input id="scheduleDate" type="date">
+        </label>
+        <label>Start
+          <input id="scheduleTime" type="time" step="300">
+        </label>
+        <label>Długość bloku
+          <div class="duration-custom">
+            <input id="scheduleDuration" type="number" min="5" step="5" placeholder="60">
+            <select id="scheduleDurationUnit">
+              <option value="minutes">minuty</option>
+              <option value="hours">godziny</option>
+            </select>
+          </div>
+        </label>
+      </div>
+
+      <div class="modal-actions schedule-actions">
+        <button id="scheduleUnschedule" class="btn ghost">Odplanuj</button>
+        <span class="spacer"></span>
+        <button id="scheduleCancel" class="btn ghost">Anuluj</button>
+        <button id="scheduleSave" class="btn primary">Zapisz blok</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reviewModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="eyebrow">WIECZORNY PRZEGLĄD</div>
+      <h2>Zamknij dzień.</h2>
+      <label>Co dziś dowiozłaś?<textarea id="reviewDone"></textarea></label>
+      <label>Czego się nauczyłaś?<textarea id="reviewLearn"></textarea></label>
+      <label>Jaki jest pierwszy ruch jutro?<input id="reviewTomorrow"></label>
+      <div class="modal-actions">
+        <button id="reviewCancel" class="btn ghost">Anuluj</button>
+        <button id="reviewSave" class="btn primary">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div id="capacityModal" class="modal hidden">
+    <div class="modal-card compact-modal">
+      <div class="eyebrow">ZMIANA TEMPA</div>
+      <h2>Jak działasz od teraz?</h2>
+      <p class="helper">Poranny briefing zostaje w historii. Ta zmiana dotyczy dalszej części dnia.</p>
+      <div class="choices capacity-choices">
+        <button type="button" class="choice" data-capacity-mode="full"><strong>Pełny</strong><small>Mam zasoby na mocniejszy blok działania.</small></button>
+        <button type="button" class="choice" data-capacity-mode="standard"><strong>Standardowy</strong><small>Normalne tempo, 2–3 ważne wyniki.</small></button>
+        <button type="button" class="choice" data-capacity-mode="survival"><strong>Minimalny</strong><small>Zwalniam. Jedna ważna rzecz + podstawy.</small></button>
+      </div>
+      <label class="modal-label">Energia teraz (opcjonalnie)
+        <input id="capacityEnergyNow" type="number" min="1" max="10" placeholder="1–10">
+      </label>
+      <label class="modal-label">Co się zmieniło?
+        <textarea id="capacityNote" placeholder="np. rano było dobrze, ale po 15:00 totalny zjazd"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button id="capacityCancel" class="btn ghost">Anuluj</button>
+        <button id="capacitySave" class="btn primary">Zapisz zmianę</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="accountModal" class="modal hidden">
+    <div class="modal-card compact-modal">
+      <div class="eyebrow">KONTO</div>
+      <h2>Ustaw lub zmień hasło.</h2>
+      <p class="helper">Po ustawieniu hasła możesz logować się normalnie emailem i hasłem. Sesja nadal zostaje zapamiętana na urządzeniu.</p>
+      <input id="newPassword" type="password" placeholder="Nowe hasło" autocomplete="new-password">
+      <input id="newPassword2" type="password" placeholder="Powtórz hasło" autocomplete="new-password">
+      <div class="modal-actions account-actions">
+        <button id="accountLogout" class="btn ghost">Wyloguj się</button>
+        <span class="spacer"></span>
+        <button id="accountCancel" class="btn ghost">Anuluj</button>
+        <button id="accountSave" class="btn primary">Zapisz hasło</button>
+      </div>
+      <div id="accountMessage" class="helper"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
