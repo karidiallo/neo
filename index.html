@@ -319,6 +319,29 @@
     </main>
   </div>
 
+
+  <div id="projectWorkspaceModal" class="modal hidden project-workspace-modal">
+    <div class="project-workspace-shell">
+      <div class="project-workspace-head">
+        <div>
+          <div class="eyebrow">PROJECT WORKSPACE</div>
+          <h2 id="projectWorkspaceTitle">Projekt</h2>
+          <p id="projectWorkspaceMeta" class="helper"></p>
+        </div>
+        <button id="projectWorkspaceClose" class="btn ghost">Zamknij</button>
+      </div>
+
+      <div class="project-workspace-tabs">
+        <button class="project-tab active" data-project-tab="overview">Overview</button>
+        <button class="project-tab" data-project-tab="kanban">Kanban</button>
+        <button class="project-tab" data-project-tab="list">Lista</button>
+        <button class="project-tab" data-project-tab="timeline">Timeline</button>
+      </div>
+
+      <div id="projectWorkspaceBody"></div>
+    </div>
+  </div>
+
   <div id="taskModal" class="modal hidden">
     <div class="modal-card">
       <div class="eyebrow">NOWE ZADANIE</div>
